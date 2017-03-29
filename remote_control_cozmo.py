@@ -26,6 +26,7 @@ sys.path.append('lib/')
 import flask_helpers
 import cozmo
 import math
+import random
 
 
 try:
@@ -44,6 +45,12 @@ remote_control_cozmo = None
 
 class RemoteControlCozmo:
 
+    reactionDict = {"happy" : {"emo":['anim_memorymatch_successhand_cozmo_02','anim_memorymatch_successhand_player_02','anim_rtpkeepaway_playeryes_03','anim_rtpkeepaway_playeryes_02','anim_sparking_success_01','anim_reacttoblock_ask_01','anim_reacttoblock_happydetermined_02']},
+                    "very_happy":{'emo':['anim_memorymatch_successhand_cozmo_03','anim_memorymatch_successhand_cozmo_04']},
+                    "sad":{'emo':['anim_driving_upset_start_01','anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02']},
+                    "angry":{'emo':['anim_bored_01','anim_bored_02','anim_keepaway_losegame_03','anim_keepaway_losehand_03','anim_speedtap_lookatplayer','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
+                    "idle":{'emo':['anim_sparking_idle_03']},
+                    "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_bored_event_02','anim_bored_event_04']}}
     def __init__(self, coz):
         self.cozmo = coz
 
@@ -55,6 +62,13 @@ class RemoteControlCozmo:
         self.head_down = 0
 
         self.text_to_say = "Hi I'm Cozmo"
+
+        self.anims_for_keys = ["idle","bored",  # 1
+                                  "angry",  # 2
+                                  "sad",  # 3
+                                  "happy",  # 4
+                                  "very_happy",  # 5
+                                 ]
 
     def joystick_start(self):
         self.cozmo.drive_wheels(0,0,0,0)
@@ -100,6 +114,25 @@ class RemoteControlCozmo:
         except cozmo.exceptions.RobotBusy:
             return False
 
+
+    def handle_key(self, key_code, is_key_down):
+        '''Called on any key press or release
+           Holding a key down may result in repeated handle_key calls with is_key_down==True
+        '''
+        # Handle any keys being released (e.g. the end of a key-click)
+        if not is_key_down:
+            if (key_code >= ord('0')) and (key_code <= ord('5')):
+                anim_name = self.key_code_to_anim_name(key_code)
+                self.play_animation(anim_name)
+            elif key_code == ord(' '):
+                self.say_text(self.text_to_say)
+
+    def key_code_to_anim_name(self, key_code):
+        key_num = key_code - ord('0')
+        anim_category = self.anims_for_keys[key_num]
+        category_arr = self.reactionDict[anim_category]['emo']
+        anim_name = random.choice (category_arr)
+        return anim_name
 
     def say_text(self, text_to_say):
         self.queue_action((self.try_say_text, text_to_say))
@@ -295,12 +328,14 @@ def handle_index_page():
                 }
                 setInterval(updateCozmo , 60);
 
-                // function sayText()
-                // {
-                //     textEntered = "Hi I'm Cozmo";
-                //     postHttpRequest("sayText", {textEntered} )
-                // }
-                // setInterval(sayText , 5000);
+                function handleKeyActivity (e, actionType)
+                {
+                    var keyCode  = (e.keyCode ? e.keyCode : e.which);
+                    postHttpRequest(actionType, {keyCode})
+                }
+
+                document.addEventListener("keydown", function(e) { handleKeyActivity(e, "keydown") } );
+                document.addEventListener("keyup", function(e) { handleKeyActivity(e, "keyup") } );
 
                 function stopEventPropagation(event)
                 {
@@ -396,6 +431,22 @@ def handle_headEnd():
     message = json.loads(request.data.decode("utf-8"))
     if remote_control_cozmo:
         remote_control_cozmo.update_head(0);
+    return ""
+
+@flask_app.route('/keydown', methods=['POST'])
+def handle_keydown():
+    '''Called from Javascript whenever a key is down (note: can generate repeat calls if held down)'''
+    return handle_key_event(request, is_key_down=True)
+
+@flask_app.route('/keyup', methods=['POST'])
+def handle_keyup():
+    '''Called from Javascript whenever a key is down (note: can generate repeat calls if held down)'''
+    return handle_key_event(request, is_key_down=False)
+
+def handle_key_event(key_request, is_key_down):
+    message = json.loads(key_request.data.decode("utf-8"))
+    if remote_control_cozmo:
+        remote_control_cozmo.handle_key(key_code=(message['keyCode']), is_key_down=is_key_down)
     return ""
 
 def run(sdk_conn):

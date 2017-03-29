@@ -5,27 +5,27 @@
             <script src="static/dist/nipplejs.js" charset="utf-8"></script>
         </head>
         <body>
-            <h1>Remote Control Cozmo</h1>
+            <h1 style="text-align:center">Welcome to Cozmo World</h1>
             <div id="left"></div>
             <div id="right"></div>
             <table>
-                <tr height=100></tr>
-                <tr height=100>
-                <td width=40></td>
-                <td width=100></td>
-                <td width=200></td>
-                    <td valign=top width=400>
-                        <button class = "button" type="button" onClick="controlHead()">Control Head</button>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <button class = "button" type="button" onClick="controlLift()">Control Lift</button>
-                    </td>
+                <tr height=10></tr>
+                <tr height=50>
+                <td width=10></td>
+                <td width=300></td>
+                <td width=340></td>
+                <td valign=top width=300>
+                    <button class = "button" type="button" onClick="controlHead()">Control Head</button>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <button class = "button" type="button" onClick="controlLift()">Control Lift</button>
+                </td>
                 </tr>
                 <tr>
-                    <td width=40></td>
+                    <td width=10></td>
                     <td valign=top>
                         <h2>Control Movement</h2>
                     </td>
-                    <td width=200></td>
+                    <td width=340></td>
                     <td valign=top>
                         <h2 id="headLiftText">Controlling Head</h2>
                     </td>
@@ -48,7 +48,7 @@
                 var joystickL = nipplejs.create({
                     zone: document.getElementById('left'),
                     mode: 'static',
-                    position: { left: '15%', top: '35%' },
+                    position: { left: '15%', top: '25%' },
                     color: 'orange',
                     size: 200
                 });
@@ -56,7 +56,7 @@
                 var joystickR = nipplejs.create({
                     zone: document.getElementById('right'),
                     mode: 'static',
-                    position: { left: '55%', top: '35%' },
+                    position: { left: '60%', top: '25%' },
                     color: '#4CAF50',
                     size: 200
                 });
@@ -69,20 +69,20 @@
                       case 90:
                       console.log("landscape");
                         var right = document.getElementById('nipple_1_1');
-                        right.style.left = '30%';
-                        right.style.top = '50%';
+                        right.style.left = '80%';
+                        right.style.top = '63%';
                         var left = document.getElementById('nipple_0_0');
-                        left.style.left = '8%';
-                        left.style.top = '50%';
+                        left.style.left = '17%';
+                        left.style.top = '63%';
                         break; 
                       default:
                       console.log("portrait");
                         var right = document.getElementById('nipple_1_1');
-                        right.style.left = '55%';
-                        right.style.top = '35%';
+                        right.style.left = '80%';
+                        right.style.top = '25%';
                         var left = document.getElementById('nipple_0_0');
                         left.style.left = '15%';
-                        left.style.top = '35%';
+                        left.style.top = '25%';
                         break; 
                     }
                 }
@@ -161,12 +161,14 @@
                 }
                 setInterval(updateCozmo , 60);
 
-                // function sayText()
-                // {
-                //     textEntered = "Hi I'm Cozmo";
-                //     postHttpRequest("sayText", {textEntered} )
-                // }
-                // setInterval(sayText , 5000);
+                function handleKeyActivity (e, actionType)
+                {
+                    var keyCode  = (e.keyCode ? e.keyCode : e.which);
+                    postHttpRequest(actionType, {keyCode})
+                }
+
+                document.addEventListener("keydown", function(e) { handleKeyActivity(e, "keydown") } );
+                document.addEventListener("keyup", function(e) { handleKeyActivity(e, "keyup") } );
 
                 function stopEventPropagation(event)
                 {
