@@ -1,0 +1,185 @@
+<html>
+        <head>
+            <title>remote_control_cozmo.py display</title>
+            <link type="text/css" rel="stylesheet" href="static/styles.css"/>
+            <script src="static/dist/nipplejs.js" charset="utf-8"></script>
+        </head>
+        <body>
+            <h1>Remote Control Cozmo</h1>
+            <div id="left"></div>
+            <div id="right"></div>
+            <table>
+                <tr height=100></tr>
+                <tr height=100>
+                <td width=40></td>
+                <td width=100></td>
+                <td width=200></td>
+                    <td valign=top width=400>
+                        <button class = "button" type="button" onClick="controlHead()">Control Head</button>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <button class = "button" type="button" onClick="controlLift()">Control Lift</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td width=40></td>
+                    <td valign=top>
+                        <h2>Control Movement</h2>
+                    </td>
+                    <td width=200></td>
+                    <td valign=top>
+                        <h2 id="headLiftText">Controlling Head</h2>
+                    </td>
+                </tr>
+            </table>
+
+            <script type="text/javascript">
+                var gisControllingHead = true
+
+                function controlLift() {
+                    gisControllingHead = false;
+                    document.getElementById('headLiftText').innerHTML = "Controlling Lift"
+                }
+
+                function controlHead() {
+                    gisControllingHead = true;
+                    document.getElementById('headLiftText').innerHTML = "Controlling Head"
+                }
+
+                var joystickL = nipplejs.create({
+                    zone: document.getElementById('left'),
+                    mode: 'static',
+                    position: { left: '15%', top: '35%' },
+                    color: 'orange',
+                    size: 200
+                });
+
+                var joystickR = nipplejs.create({
+                    zone: document.getElementById('right'),
+                    mode: 'static',
+                    position: { left: '55%', top: '35%' },
+                    color: '#4CAF50',
+                    size: 200
+                });
+
+                function doOnOrientationChange() {
+                    
+                    switch(window.orientation) 
+                    {  
+                      case -90:
+                      case 90:
+                      console.log("landscape");
+                        var right = document.getElementById('nipple_1_1');
+                        right.style.left = '30%';
+                        right.style.top = '50%';
+                        var left = document.getElementById('nipple_0_0');
+                        left.style.left = '8%';
+                        left.style.top = '50%';
+                        break; 
+                      default:
+                      console.log("portrait");
+                        var right = document.getElementById('nipple_1_1');
+                        right.style.left = '55%';
+                        right.style.top = '35%';
+                        var left = document.getElementById('nipple_0_0');
+                        left.style.left = '15%';
+                        left.style.top = '35%';
+                        break; 
+                    }
+                }
+
+                  window.addEventListener('orientationchange', doOnOrientationChange);
+
+                  // Initial execution if needed
+                  doOnOrientationChange();
+
+                function bindNipple () {
+                    joystickR.on('end', function (evt, data) {
+                        headLiftEnd(data);
+                    }).on('move', function (evt, data) {
+                        headLiftMove(data);
+                    });
+
+                    joystickL.on('start', function (evt, data) {
+                        startJoystick(data);
+                    }).on('end', function (evt, data) {
+                        endJoystick(data);
+                    }).on('move', function (evt, data) {
+                        debug(data);
+                    });
+                }
+                bindNipple();
+
+                function headLiftEnd(obj) {
+                    console.log("End");
+                    msg = "End";
+                    if(gisControllingHead) {
+                        postHttpRequest("headEnd", {msg})
+                    } else{
+                        postHttpRequest("liftEnd", {msg})    
+                    }
+                }
+                function headLiftMove (obj) {
+                    angle = obj.angle.degree;
+                    force = obj.force
+                    console.log(angle);
+                    console.log(force);
+                    if(gisControllingHead) {
+                        postHttpRequest("headMove", {angle,force})
+                    } else{
+                        postHttpRequest("liftMove", {angle,force})
+                    }
+                }
+
+                function startJoystick(obj) {
+                    console.log("Start");
+                    msg = "Start";
+                    postHttpRequest("joystickStart", {msg})
+                }
+                function endJoystick(obj) {
+                    console.log("End");
+                    msg = "End";
+                    postHttpRequest("joystickEnd", {msg})
+                }
+                function debug (obj) {
+                    angle = obj.angle.degree;
+                    force = obj.force
+                    console.log(angle);
+                    console.log(force);
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+
+                function postHttpRequest(url, dataSet)
+                {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", url, true);
+                    xhr.send( JSON.stringify( dataSet ) );
+                }
+
+                function updateCozmo()
+                {
+                    postHttpRequest("updateCozmo", {} )
+                }
+                setInterval(updateCozmo , 60);
+
+                // function sayText()
+                // {
+                //     textEntered = "Hi I'm Cozmo";
+                //     postHttpRequest("sayText", {textEntered} )
+                // }
+                // setInterval(sayText , 5000);
+
+                function stopEventPropagation(event)
+                {
+                    if (event.stopPropagation)
+                    {
+                        event.stopPropagation();
+                    }
+                    else
+                    {
+                        event.cancelBubble = true
+                    }
+                }
+            </script>
+
+        </body>
+    </html>
