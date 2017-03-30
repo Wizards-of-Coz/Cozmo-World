@@ -21,13 +21,15 @@ This example lets you control Cozmo by Remote Control, using a webpage served by
 
 import json
 import sys
+sys.path.append('../')
+from Common.colors import Colors
 
 sys.path.append('lib/')
 import flask_helpers
 import cozmo
 import math
 import random
-
+import asyncio
 
 try:
     from flask import Flask, request
@@ -54,6 +56,9 @@ class RemoteControlCozmo:
     def __init__(self, coz):
         self.cozmo = coz
 
+        self.lightBool = [False,False,False,False]
+        self.lights = [Colors.GREEN, Colors.RED, Colors.BLUE, Colors.YELLOW, None]
+
         self.action_queue = []
 
         self.lift_up = 0
@@ -69,6 +74,17 @@ class RemoteControlCozmo:
                                   "happy",  # 4
                                   "very_happy",  # 5
                                  ]
+        self.cubes = None
+        try:
+            self.cubes = self.cozmo.world.wait_until_observe_num_objects(1, object_type = cozmo.objects.LightCube,timeout=10)
+        except asyncio.TimeoutError:
+            print("Didn't find a cube :-(")
+            return
+        finally:
+            if len(self.cubes) > 0:
+                self.cubes[0].set_lights_off();
+            else:
+                print("Not found");
 
     def joystick_start(self):
         self.cozmo.drive_wheels(0,0,0,0)
@@ -114,6 +130,15 @@ class RemoteControlCozmo:
         except cozmo.exceptions.RobotBusy:
             return False
 
+    def light_cube(self,side):
+        self.lightBool[side] = not self.lightBool[side];
+        setLights = [None,None,None,None]
+        i = 0;
+        for b in self.lightBool:
+            if b == True:
+                setLights[i] = self.lights[i];
+            i+=1;
+        self.cubes[0].set_light_corners(setLights[0],setLights[1],setLights[2],setLights[3]); 
 
     def handle_key(self, key_code, is_key_down):
         '''Called on any key press or release
@@ -124,6 +149,14 @@ class RemoteControlCozmo:
             if (key_code >= ord('0')) and (key_code <= ord('5')):
                 anim_name = self.key_code_to_anim_name(key_code)
                 self.play_animation(anim_name)
+            elif key_code == 37:
+                self.light_cube(2);
+            elif key_code == 38:
+                self.light_cube(1);
+            elif key_code == 39:
+                self.light_cube(0);
+            elif key_code == 40:
+                self.light_cube(3);
             elif key_code == ord(' '):
                 self.say_text(self.text_to_say)
 
@@ -215,7 +248,7 @@ def handle_index_page():
                 var joystickL = nipplejs.create({
                     zone: document.getElementById('left'),
                     mode: 'static',
-                    position: { left: '15%', top: '25%' },
+                    position: { left: '17%', top: '25%' },
                     color: 'orange',
                     size: 200
                 });
@@ -223,9 +256,10 @@ def handle_index_page():
                 var joystickR = nipplejs.create({
                     zone: document.getElementById('right'),
                     mode: 'static',
-                    position: { left: '60%', top: '25%' },
+                    position: { left: '80%', top: '25%' },
                     color: '#4CAF50',
-                    size: 200
+                    size: 200,
+                    restOpacity: 0.6
                 });
 
                 function doOnOrientationChange() {
@@ -241,6 +275,10 @@ def handle_index_page():
                         var left = document.getElementById('nipple_0_0');
                         left.style.left = '17%';
                         left.style.top = '63%';
+                        var back = right.getElementsByClassName("back")[0];
+                        back.style.marginLeft = '-75px';
+                        back.style.width = '150px';
+                        back.style.borderRadius = '0%';
                         break; 
                       default:
                       console.log("portrait");
@@ -248,8 +286,12 @@ def handle_index_page():
                         right.style.left = '80%';
                         right.style.top = '25%';
                         var left = document.getElementById('nipple_0_0');
-                        left.style.left = '15%';
+                        left.style.left = '17%';
                         left.style.top = '25%';
+                        var back = right.getElementsByClassName("back")[0];
+                        back.style.marginLeft = '-75px';
+                        back.style.width = '150px';
+                        back.style.borderRadius = '0%';
                         break; 
                     }
                 }

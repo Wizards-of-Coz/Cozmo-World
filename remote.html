@@ -48,7 +48,7 @@
                 var joystickL = nipplejs.create({
                     zone: document.getElementById('left'),
                     mode: 'static',
-                    position: { left: '15%', top: '25%' },
+                    position: { left: '17%', top: '25%' },
                     color: 'orange',
                     size: 200
                 });
@@ -56,9 +56,10 @@
                 var joystickR = nipplejs.create({
                     zone: document.getElementById('right'),
                     mode: 'static',
-                    position: { left: '60%', top: '25%' },
+                    position: { left: '80%', top: '25%' },
                     color: '#4CAF50',
-                    size: 200
+                    size: 200,
+                    restOpacity: 0.6
                 });
 
                 function doOnOrientationChange() {
@@ -74,6 +75,10 @@
                         var left = document.getElementById('nipple_0_0');
                         left.style.left = '17%';
                         left.style.top = '63%';
+                        var back = right.getElementsByClassName("back")[0];
+                        back.style.marginLeft = '-75px';
+                        back.style.width = '150px';
+                        back.style.borderRadius = '0%';
                         break; 
                       default:
                       console.log("portrait");
@@ -81,8 +86,12 @@
                         right.style.left = '80%';
                         right.style.top = '25%';
                         var left = document.getElementById('nipple_0_0');
-                        left.style.left = '15%';
+                        left.style.left = '17%';
                         left.style.top = '25%';
+                        var back = right.getElementsByClassName("back")[0];
+                        back.style.marginLeft = '-75px';
+                        back.style.width = '150px';
+                        back.style.borderRadius = '0%';
                         break; 
                     }
                 }
