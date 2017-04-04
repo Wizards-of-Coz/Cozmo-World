@@ -30,6 +30,8 @@ import cozmo
 import math
 import random
 import asyncio
+import numpy as np
+from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 
 try:
     from flask import Flask, request
@@ -42,8 +44,25 @@ except ImportError:
     sys.exit("Cannot import from PIL: Do `pip3 install --user Pillow` to install")
 
 
+def create_default_image(image_width, image_height, do_gradient=False):
+    '''Create a place-holder PIL image to use until we have a live feed from Cozmo'''
+    image_bytes = bytearray([0x70, 0x70, 0x70]) * image_width * image_height
+
+    if do_gradient:
+        i = 0
+        for y in range(image_height):
+            for x in range(image_width):
+                image_bytes[i] = int(255.0 * (x / image_width))   # R
+                image_bytes[i+1] = int(255.0 * (y / image_height))  # G
+                image_bytes[i+2] = 0                                # B
+                i += 3
+
+    image = Image.frombytes('RGB', (image_width, image_height), bytes(image_bytes))
+    return image
+
 flask_app = Flask(__name__)
 remote_control_cozmo = None
+_default_camera_image = create_default_image(320, 240)
 
 class RemoteControlCozmo:
 
@@ -53,7 +72,13 @@ class RemoteControlCozmo:
                     "angry":{'emo':['anim_bored_01','anim_bored_02','anim_keepaway_losegame_03','anim_keepaway_losehand_03','anim_speedtap_lookatplayer','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
                     "idle":{'emo':['anim_sparking_idle_03']},
                     "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_bored_event_02','anim_bored_event_04']}}
+
+    buildingMaps = {}
+    coins = 0;
+    light_on = False
+
     def __init__(self, coz):
+
         self.cozmo = coz
 
         self.lightBool = [False,False,False,False]
@@ -74,6 +99,14 @@ class RemoteControlCozmo:
                                   "happy",  # 4
                                   "very_happy",  # 5
                                  ]
+        self.cozmo.set_lift_height(0,in_parallel=True);
+        self.cozmo.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/8,in_parallel=True)
+
+        self.visible_objects = []
+        self.measuring_dist = False;
+
+        self.define_custom_objects();
+
         self.cubes = None
         try:
             self.cubes = self.cozmo.world.wait_until_observe_num_objects(1, object_type = cozmo.objects.LightCube,timeout=10)
@@ -82,9 +115,59 @@ class RemoteControlCozmo:
             return
         finally:
             if len(self.cubes) > 0:
+                self.cozmo.camera.image_stream_enabled = True;
                 self.cubes[0].set_lights_off();
+                self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True);
+                self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.on_object_appeared)
+                self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
+
             else:
                 print("Not found");
+
+
+    async def measure_distance_visible_objects(self):
+        while True:
+            for obj in self.visible_objects:
+                dist = self.robots_distance_to_object(self.cozmo, obj);
+                if self.buildingMaps[obj.object_type] == "Shop":
+                    if(dist < 400):
+                        self.light_on = True;
+                        self.cubes[0].set_light_corners(self.lights[0],self.lights[4],self.lights[4],self.lights[4]);
+                elif self.buildingMaps[obj.object_type] == "House1":
+                    if (dist < 400):
+                        if self.light_on:
+                            self.coins += 1;
+                            back_pack_lights = [None,None,None]
+                            for i in range(0,self.coins):
+                                back_pack_lights[i] = Colors.CYAN
+                            print(back_pack_lights);
+                            self.cozmo.set_backpack_lights(None,back_pack_lights[0],back_pack_lights[1],back_pack_lights[2],None);
+                        self.light_on = False;
+                        self.cubes[0].set_lights_off();
+
+            await asyncio.sleep(0.5);
+
+
+    async def on_object_appeared(self, event, *, obj, **kw):
+        if 'Custom' in str(type(obj)):
+            self.visible_objects.append(obj);
+        if(not self.measuring_dist):
+            self.measuring_dist = True;
+            asyncio.ensure_future(self.measure_distance_visible_objects());
+
+    async def on_object_disappeared(self, event, *, obj, **kw):
+        print("dis");
+        if obj in self.visible_objects:
+            self.visible_objects.remove(obj);
+
+
+    def robots_distance_to_object(self,robot, target):
+        """
+        Returns: The distance (mm) between the robot and the target object
+        """
+        object_vector = np.array((target.pose.position.x - robot.pose.position.x,
+                                  target.pose.position.y - robot.pose.position.y))
+        return math.sqrt((object_vector ** 2).sum())
 
     def joystick_start(self):
         self.cozmo.drive_wheels(0,0,0,0)
@@ -93,16 +176,28 @@ class RemoteControlCozmo:
         self.cozmo.drive_wheels(0,0,0,0)
 
     def joystick_move(self,angle,force):
-        forward_speed = 50 + force*25;
-        turn_speed = 50 + force*25;
-        angle = round(angle/5)*5;
+        forward_speed = 30 + force*30;
+        turn_speed = 30;
+        
+        if(angle > 45 and angle < 135):
+            direction = "up";
+        elif(angle < 45 or angle > 315):
+            direction = "right";
+        elif(angle > 135 and angle < 225):
+            direction = "left";
+        elif(angle > 225 and angle < 315):
+            direction = "down";
 
-        if(angle > 0 and angle < 180):
+        drive_dir = 0;
+        turn_dir = 0;
+        if(direction == "up"):
             drive_dir = 1;
-            turn_dir = (90 - angle)/90;
-        else:
-            drive_dir = -1;
-            turn_dir = (270-angle)/90;
+        elif(direction == "right"):
+            turn_dir = 1;
+        elif(direction == "left"):
+            turn_dir = -1;
+        elif(direction == "down"):
+            drive_dir = -1
 
         l_wheel_speed = (drive_dir * forward_speed) + (turn_speed * turn_dir)
         r_wheel_speed = (drive_dir * forward_speed) - (turn_speed * turn_dir)
@@ -195,6 +290,93 @@ class RemoteControlCozmo:
         head_vel = up_or_down * head_speed
         self.cozmo.move_head(head_vel)
 
+    def define_custom_objects(self):
+
+        self.buildingMaps[CustomObjectTypes.CustomType09] = 'Shop';
+        self.buildingMaps[CustomObjectTypes.CustomType02] = 'House1';
+        self.buildingMaps[CustomObjectTypes.CustomType03] = 't';
+        self.buildingMaps[CustomObjectTypes.CustomType04] = 'a';
+        self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';
+        self.buildingMaps[CustomObjectTypes.CustomType06] = 'i';
+        self.buildingMaps[CustomObjectTypes.CustomType07] = 'n';
+        self.buildingMaps[CustomObjectTypes.CustomType08] = 's';
+        self.buildingMaps[CustomObjectTypes.CustomType10] = 'r';
+        self.buildingMaps[CustomObjectTypes.CustomType11] = 'd';
+        self.buildingMaps[CustomObjectTypes.CustomType12] = 'l';
+        self.buildingMaps[CustomObjectTypes.CustomType13] = 'c';
+        self.buildingMaps[CustomObjectTypes.CustomType14] = 'u';
+        self.buildingMaps[CustomObjectTypes.CustomType15] = 'm';
+        self.buildingMaps[CustomObjectTypes.CustomType16] = 'w';
+        self.buildingMaps[CustomObjectTypes.CustomType17] = 'e';
+
+
+        cube_obj_1 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType02,
+                                                  CustomObjectMarkers.Diamonds2,
+                                                  100,
+                                                  90, 90, False)
+        cube_obj_2 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType03,
+                                                             CustomObjectMarkers.Diamonds3,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_3 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType04,
+                                                             CustomObjectMarkers.Diamonds4,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_4 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType05,
+                                                             CustomObjectMarkers.Diamonds5,
+                                                             100,
+                                                             90, 90, True)
+
+        cube_obj_5 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType06,
+                                                             CustomObjectMarkers.Circles2,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_6 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType07,
+                                                             CustomObjectMarkers.Circles3,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_7 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType08,
+                                                             CustomObjectMarkers.Circles4,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_8 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType09,
+                                                             CustomObjectMarkers.Circles5,
+                                                             100,
+                                                             90, 90, True)
+
+        cube_obj_9 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType10,
+                                                             CustomObjectMarkers.Triangles2,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_10 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType11,
+                                                             CustomObjectMarkers.Triangles3,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_11 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType12,
+                                                             CustomObjectMarkers.Triangles4,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_12 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType13,
+                                                             CustomObjectMarkers.Triangles5,
+                                                             100,
+                                                             90, 90, True)
+
+        cube_obj_13 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType14,
+                                                             CustomObjectMarkers.Hexagons2,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_14 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType15,
+                                                             CustomObjectMarkers.Hexagons3,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_15 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType16,
+                                                             CustomObjectMarkers.Hexagons4,
+                                                             100,
+                                                             90, 90, True)
+        cube_obj_16 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType17,
+                                                             CustomObjectMarkers.Hexagons5,
+                                                             100,
+                                                             90, 90, True)
 @flask_app.route("/")
 def handle_index_page():
     return '''
@@ -209,97 +391,111 @@ def handle_index_page():
             <div id="left"></div>
             <div id="right"></div>
             <table>
-                <tr height=10></tr>
-                <tr height=50>
-                <td width=10></td>
-                <td width=300></td>
-                <td width=340></td>
-                <td valign=top width=300>
-                    <button class = "button" type="button" onClick="controlHead()">Control Head</button>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <button class = "button" type="button" onClick="controlLift()">Control Lift</button>
-                </td>
-                </tr>
                 <tr>
-                    <td width=10></td>
-                    <td valign=top>
+                    <td width=5%></td>
+                    <td width=25% valign=top>
                         <h2>Control Movement</h2>
                     </td>
-                    <td width=340></td>
-                    <td valign=top>
-                        <h2 id="headLiftText">Controlling Head</h2>
+                    <td width=45%></td>
+                    <td width=25% valign=top>
+                        <h2 id="headLiftText">Control Lift</h2>
                     </td>
                 </tr>
+                <tr>
+                    <td width=5%></td>
+                    <td width=25%>
+                        <div style="text-align:center;width:320px;">
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()"><img src="static/images/up.png" height="100%"></button><br><br>
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"><img src="static/images/left.png" height="100%"></button>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"><img src="static/images/right.png" height="100%"></button><br><br>
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()"><img src="static/images/down.png" height="100%"></button>
+                        </div>
+                    </td>
+                    <td width=45%></td>
+                    <td width=25%>
+                        <div style="text-align:center;width:320px;">
+                          <button style="height:40px;width:100px" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()"><img src="static/images/up.png" height="100%"></button><br><br>
+                          <button style="height:40px;width:100px;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()"><img src="static/images/down.png" height="100%"></button>
+                        </div>
+                    </td>
+
+                </tr>
             </table>
+            <br><br><br>
+            <!-- <table>
+                <tr>
+                    <td width=50%></td>
+                    <td valign = top>
+                        <img src="cozmoImage" id="cozmoImageId" width=100%, padding-top: 75%;>
+                    </td>
+                </tr>
+            </table> -->
 
             <script type="text/javascript">
-                var gisControllingHead = true
+                var gisControllingHead = false
 
-                function controlLift() {
-                    gisControllingHead = false;
-                    document.getElementById('headLiftText').innerHTML = "Controlling Lift"
-                }
+                // var joystickL = nipplejs.create({
+                //     zone: document.getElementById('left'),
+                //     mode: 'static',
+                //     position: { left: '17%', top: '20%' },
+                //     color: 'orange',
+                //     size: 200
+                // });
 
-                function controlHead() {
-                    gisControllingHead = true;
-                    document.getElementById('headLiftText').innerHTML = "Controlling Head"
-                }
+                // var joystickR = nipplejs.create({
+                //     zone: document.getElementById('right'),
+                //     mode: 'static',
+                //     position: { left: '80%', top: '20%' },
+                //     color: '#4CAF50',
+                //     size: 200,
+                //     restOpacity: 0.6
+                // });
 
-                var joystickL = nipplejs.create({
-                    zone: document.getElementById('left'),
-                    mode: 'static',
-                    position: { left: '17%', top: '25%' },
-                    color: 'orange',
-                    size: 200
-                });
+                // function doOnOrientationChange() {
 
-                var joystickR = nipplejs.create({
-                    zone: document.getElementById('right'),
-                    mode: 'static',
-                    position: { left: '80%', top: '25%' },
-                    color: '#4CAF50',
-                    size: 200,
-                    restOpacity: 0.6
-                });
-
-                function doOnOrientationChange() {
-                    
-                    switch(window.orientation) 
-                    {  
-                      case -90:
-                      case 90:
-                      console.log("landscape");
-                        var right = document.getElementById('nipple_1_1');
-                        right.style.left = '80%';
-                        right.style.top = '63%';
-                        var left = document.getElementById('nipple_0_0');
-                        left.style.left = '17%';
-                        left.style.top = '63%';
-                        var back = right.getElementsByClassName("back")[0];
-                        back.style.marginLeft = '-75px';
-                        back.style.width = '150px';
-                        back.style.borderRadius = '0%';
-                        break; 
-                      default:
-                      console.log("portrait");
-                        var right = document.getElementById('nipple_1_1');
-                        right.style.left = '80%';
-                        right.style.top = '25%';
-                        var left = document.getElementById('nipple_0_0');
-                        left.style.left = '17%';
-                        left.style.top = '25%';
-                        var back = right.getElementsByClassName("back")[0];
-                        back.style.marginLeft = '-75px';
-                        back.style.width = '150px';
-                        back.style.borderRadius = '0%';
-                        break; 
-                    }
-                }
+                //     switch(window.orientation)
+                //     {
+                //       case -90:
+                //       case 90:
+                //       console.log("landscape");
+                //         var right = document.getElementById('nipple_1_1');
+                //         right.style.left = '80%';
+                //         right.style.top = '53%';
+                //         var left = document.getElementById('nipple_0_0');
+                //         left.style.left = '17%';
+                //         left.style.top = '53%';
+                //         var back = right.getElementsByClassName("back")[0];
+                //         back.style.marginLeft = '-75px';
+                //         back.style.width = '150px';
+                //         back.style.borderRadius = '0%';
+                //         break;
+                //       default:
+                //       console.log("portrait");
+                //         var right = document.getElementById('nipple_1_1');
+                //         right.style.left = '80%';
+                //         right.style.top = '20%';
+                //         var left = document.getElementById('nipple_0_0');
+                //         left.style.left = '17%';
+                //         left.style.top = '20%';
+                //         var back = right.getElementsByClassName("back")[0];
+                //         back.style.marginLeft = '-75px';
+                //         back.style.width = '150px';
+                //         back.style.borderRadius = '0%';
+                //         break;
+                //     }
+                // }
 
                   window.addEventListener('orientationchange', doOnOrientationChange);
 
                   // Initial execution if needed
                   doOnOrientationChange();
+                function updateImage()
+                {
+                    // Note: Firefox ignores the no_store and still caches, needs the "?UID" suffix to fool it
+                    document.getElementById("cozmoImageId").src="cozmoImage?" + (new Date()).getTime();
+                }
+                // setInterval(updateImage , 90); // repeat every X ms
 
                 function bindNipple () {
                     joystickR.on('end', function (evt, data) {
@@ -318,25 +514,59 @@ def handle_index_page():
                 }
                 bindNipple();
 
+                function moveup() {
+                    angle = 90;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function movedown() {
+                    angle = 270;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function moveleft() {
+                    angle = 180;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function moveright() {
+                    angle = 0;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function stopMove() {
+                    msg = "End";
+                    postHttpRequest("joystickEnd", {msg})
+                }
+
+                function moveupLift() {
+                    angle = 90;
+                    force = 1;
+                    postHttpRequest("liftMove", {angle,force})
+                }
+                function movedownLift() {
+                    angle = 270;
+                    force = 1;
+                    postHttpRequest("liftMove", {angle,force})
+                }
+                function stopMoveLift() {
+                    msg = "End";
+                    postHttpRequest("liftEnd", {msg})
+                }
+
                 function headLiftEnd(obj) {
                     console.log("End");
                     msg = "End";
                     if(gisControllingHead) {
                         postHttpRequest("headEnd", {msg})
                     } else{
-                        postHttpRequest("liftEnd", {msg})    
+                        postHttpRequest("liftEnd", {msg})
                     }
                 }
                 function headLiftMove (obj) {
                     angle = obj.angle.degree;
                     force = obj.force
-                    console.log(angle);
-                    console.log(force);
-                    if(gisControllingHead) {
-                        postHttpRequest("headMove", {angle,force})
-                    } else{
-                        postHttpRequest("liftMove", {angle,force})
-                    }
+                    postHttpRequest("liftMove", {angle,force})
                 }
 
                 function startJoystick(obj) {
@@ -352,8 +582,6 @@ def handle_index_page():
                 function debug (obj) {
                     angle = obj.angle.degree;
                     force = obj.force
-                    console.log(angle);
-                    console.log(force);
                     postHttpRequest("joystickMove", {angle,force})
                 }
 
@@ -396,6 +624,15 @@ def handle_index_page():
     </html>
     '''
 
+@flask_app.route("/cozmoImage")
+def handle_cozmoImage():
+    '''Called very frequently from Javascript to request the latest camera image'''
+    if remote_control_cozmo:
+        image = remote_control_cozmo.cozmo.world.latest_image
+        if image:
+            image = image.raw_image
+            return flask_helpers.serve_pil_image(image)
+    return flask_helpers.serve_pil_image(_default_camera_image)
 
 @flask_app.route('/updateCozmo', methods=['POST'])
 def handle_updateCozmo():
@@ -501,7 +738,7 @@ def run(sdk_conn):
 
 if __name__ == '__main__':
     cozmo.setup_basic_logging()
-    cozmo.robot.Robot.drive_off_charger_on_connect = False  # RC can drive off charger if required
+    cozmo.robot.Robot.drive_off_charger_on_connect = True  # RC can drive off charger if required
     try:
         cozmo.connect(run)
     except cozmo.ConnectionError as e:

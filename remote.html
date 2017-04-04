@@ -9,97 +9,111 @@
             <div id="left"></div>
             <div id="right"></div>
             <table>
-                <tr height=10></tr>
-                <tr height=50>
-                <td width=10></td>
-                <td width=300></td>
-                <td width=340></td>
-                <td valign=top width=300>
-                    <button class = "button" type="button" onClick="controlHead()">Control Head</button>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <button class = "button" type="button" onClick="controlLift()">Control Lift</button>
-                </td>
-                </tr>
                 <tr>
-                    <td width=10></td>
-                    <td valign=top>
+                    <td width=5%></td>
+                    <td width=25% valign=top>
                         <h2>Control Movement</h2>
                     </td>
-                    <td width=340></td>
-                    <td valign=top>
-                        <h2 id="headLiftText">Controlling Head</h2>
+                    <td width=45%></td>
+                    <td width=25% valign=top>
+                        <h2 id="headLiftText">Control Lift</h2>
                     </td>
                 </tr>
+                <tr>
+                    <td width=5%></td>
+                    <td width=25%>
+                        <div style="text-align:center;width:320px;">
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()"><img src="static/images/up.png" height="100%"></button><br><br>
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"><img src="static/images/left.png" height="100%"></button>
+                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"><img src="static/images/right.png" height="100%"></button><br><br>
+                          <button class="unselectable" style="height:40px;width:100px" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()"><img src="static/images/down.png" height="100%"></button>
+                        </div>
+                    </td>
+                    <td width=45%></td>
+                    <td width=25%>
+                        <div style="text-align:center;width:320px;">
+                          <button style="height:40px;width:100px" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()"><img src="static/images/up.png" height="100%"></button><br><br>
+                          <button style="height:40px;width:100px;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()"><img src="static/images/down.png" height="100%"></button>
+                        </div>
+                    </td>
+
+                </tr>
             </table>
+            <br><br><br>
+            <!-- <table>
+                <tr>
+                    <td width=50%></td>
+                    <td valign = top>
+                        <img src="cozmoImage" id="cozmoImageId" width=100%, padding-top: 75%;>
+                    </td>
+                </tr>
+            </table> -->
 
             <script type="text/javascript">
-                var gisControllingHead = true
+                var gisControllingHead = false
 
-                function controlLift() {
-                    gisControllingHead = false;
-                    document.getElementById('headLiftText').innerHTML = "Controlling Lift"
-                }
+                // var joystickL = nipplejs.create({
+                //     zone: document.getElementById('left'),
+                //     mode: 'static',
+                //     position: { left: '17%', top: '20%' },
+                //     color: 'orange',
+                //     size: 200
+                // });
 
-                function controlHead() {
-                    gisControllingHead = true;
-                    document.getElementById('headLiftText').innerHTML = "Controlling Head"
-                }
+                // var joystickR = nipplejs.create({
+                //     zone: document.getElementById('right'),
+                //     mode: 'static',
+                //     position: { left: '80%', top: '20%' },
+                //     color: '#4CAF50',
+                //     size: 200,
+                //     restOpacity: 0.6
+                // });
 
-                var joystickL = nipplejs.create({
-                    zone: document.getElementById('left'),
-                    mode: 'static',
-                    position: { left: '17%', top: '25%' },
-                    color: 'orange',
-                    size: 200
-                });
+                // function doOnOrientationChange() {
 
-                var joystickR = nipplejs.create({
-                    zone: document.getElementById('right'),
-                    mode: 'static',
-                    position: { left: '80%', top: '25%' },
-                    color: '#4CAF50',
-                    size: 200,
-                    restOpacity: 0.6
-                });
-
-                function doOnOrientationChange() {
-                    
-                    switch(window.orientation) 
-                    {  
-                      case -90:
-                      case 90:
-                      console.log("landscape");
-                        var right = document.getElementById('nipple_1_1');
-                        right.style.left = '80%';
-                        right.style.top = '63%';
-                        var left = document.getElementById('nipple_0_0');
-                        left.style.left = '17%';
-                        left.style.top = '63%';
-                        var back = right.getElementsByClassName("back")[0];
-                        back.style.marginLeft = '-75px';
-                        back.style.width = '150px';
-                        back.style.borderRadius = '0%';
-                        break; 
-                      default:
-                      console.log("portrait");
-                        var right = document.getElementById('nipple_1_1');
-                        right.style.left = '80%';
-                        right.style.top = '25%';
-                        var left = document.getElementById('nipple_0_0');
-                        left.style.left = '17%';
-                        left.style.top = '25%';
-                        var back = right.getElementsByClassName("back")[0];
-                        back.style.marginLeft = '-75px';
-                        back.style.width = '150px';
-                        back.style.borderRadius = '0%';
-                        break; 
-                    }
-                }
+                //     switch(window.orientation)
+                //     {
+                //       case -90:
+                //       case 90:
+                //       console.log("landscape");
+                //         var right = document.getElementById('nipple_1_1');
+                //         right.style.left = '80%';
+                //         right.style.top = '53%';
+                //         var left = document.getElementById('nipple_0_0');
+                //         left.style.left = '17%';
+                //         left.style.top = '53%';
+                //         var back = right.getElementsByClassName("back")[0];
+                //         back.style.marginLeft = '-75px';
+                //         back.style.width = '150px';
+                //         back.style.borderRadius = '0%';
+                //         break;
+                //       default:
+                //       console.log("portrait");
+                //         var right = document.getElementById('nipple_1_1');
+                //         right.style.left = '80%';
+                //         right.style.top = '20%';
+                //         var left = document.getElementById('nipple_0_0');
+                //         left.style.left = '17%';
+                //         left.style.top = '20%';
+                //         var back = right.getElementsByClassName("back")[0];
+                //         back.style.marginLeft = '-75px';
+                //         back.style.width = '150px';
+                //         back.style.borderRadius = '0%';
+                //         break;
+                //     }
+                // }
 
                   window.addEventListener('orientationchange', doOnOrientationChange);
 
                   // Initial execution if needed
                   doOnOrientationChange();
+                function updateImage()
+                {
+                    // Note: Firefox ignores the no_store and still caches, needs the "?UID" suffix to fool it
+                    document.getElementById("cozmoImageId").src="cozmoImage?" + (new Date()).getTime();
+                }
+                // setInterval(updateImage , 90); // repeat every X ms
 
                 function bindNipple () {
                     joystickR.on('end', function (evt, data) {
@@ -118,25 +132,59 @@
                 }
                 bindNipple();
 
+                function moveup() {
+                    angle = 90;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function movedown() {
+                    angle = 270;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function moveleft() {
+                    angle = 180;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function moveright() {
+                    angle = 0;
+                    force = 1;
+                    postHttpRequest("joystickMove", {angle,force})
+                }
+                function stopMove() {
+                    msg = "End";
+                    postHttpRequest("joystickEnd", {msg})
+                }
+
+                function moveupLift() {
+                    angle = 90;
+                    force = 1;
+                    postHttpRequest("liftMove", {angle,force})
+                }
+                function movedownLift() {
+                    angle = 270;
+                    force = 1;
+                    postHttpRequest("liftMove", {angle,force})
+                }
+                function stopMoveLift() {
+                    msg = "End";
+                    postHttpRequest("liftEnd", {msg})
+                }
+
                 function headLiftEnd(obj) {
                     console.log("End");
                     msg = "End";
                     if(gisControllingHead) {
                         postHttpRequest("headEnd", {msg})
                     } else{
-                        postHttpRequest("liftEnd", {msg})    
+                        postHttpRequest("liftEnd", {msg})
                     }
                 }
                 function headLiftMove (obj) {
                     angle = obj.angle.degree;
                     force = obj.force
-                    console.log(angle);
-                    console.log(force);
-                    if(gisControllingHead) {
-                        postHttpRequest("headMove", {angle,force})
-                    } else{
-                        postHttpRequest("liftMove", {angle,force})
-                    }
+                    postHttpRequest("liftMove", {angle,force})
                 }
 
                 function startJoystick(obj) {
@@ -152,8 +200,6 @@
                 function debug (obj) {
                     angle = obj.angle.degree;
                     force = obj.force
-                    console.log(angle);
-                    console.log(force);
                     postHttpRequest("joystickMove", {angle,force})
                 }
 
