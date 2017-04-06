@@ -48,10 +48,7 @@ except ImportError:
 flask_app = Flask(__name__)
 remote_control_cozmo = None
 
-Color1 = "Green"
-Color2 = "Red"
-Color3 = "Blue"
-Color4 = "Yellow"
+CColors = ["Green", "Red", "Blue", "Yellow", "Magenta"]
 
 class RemoteControlCozmo:
 
@@ -60,19 +57,18 @@ class RemoteControlCozmo:
                     "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_driving_upset_start_01']}}
 
     buildingMaps = {}
-    coins = 0;
+    coins = 0
     lights_on = []
-    turned_lights_on_this_time = False;
-    currentLights = {Color1: None, Color2: None, Color3: None, Color4: None}
-    penalised_this_time = False;
-    got_this_time = False;
-    pizza_queue = [];
+    turned_lights_on_this_time = False
+    currentLights = [None,None,None,None]
+    lights = {CColors[0]: Colors.GREEN, CColors[1]: Colors.RED, CColors[2]: Colors.BLUE, CColors[3]: Colors.YELLOW, CColors[4]: Colors.MAGENTA}
+    penalised_this_time = False
+    got_this_time = False
+    pizza_queue = []
 
     def __init__(self, coz):
 
         self.cozmo = coz
-
-        self.lights = {Color1: Colors.GREEN, Color2: Colors.RED, Color3: Colors.BLUE, Color4: Colors.YELLOW, "None":None}
 
         self.action_queue = []
 
@@ -120,10 +116,10 @@ class RemoteControlCozmo:
         loop.run_until_complete(self.pizzaSpawning())
 
     async def pizzaSpawning(self):
-        rndnum = random.randint(0, 3);
-        if rndnum not in self.pizza_queue:
+        rndnum = random.randint(0, 4);
+        if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4:
             self.pizza_queue.append(rndnum);
-        rndTime = random.randint(1,10);
+        rndTime = random.randint(10,200);
         await asyncio.sleep(rndTime);
         await self.pizzaSpawning();
 
@@ -131,7 +127,8 @@ class RemoteControlCozmo:
         while True:
             for obj in self.visible_objects:
                 dist = self.robots_distance_to_object(self.cozmo, obj);
-                if self.buildingMaps[obj.object_type] == "Shop":
+                current_building = self.buildingMaps[obj.object_type];
+                if current_building == "Shop":
                     if(dist < 400):
                         if len(self.pizza_queue) == 0:
                             continue;
@@ -139,26 +136,20 @@ class RemoteControlCozmo:
                             self.light_cube(pizza);
                         self.pizza_queue = []
 
-                elif self.buildingMaps[obj.object_type] == Color1:
+                elif current_building in CColors:
                     if (dist < 400):
-                        if Color1 in self.lights_on:
-                            self.got_this_time.append(Color1);
-                            self.correct_house_reached(Color1);
-                        elif Color1 not in self.got_this_time:
+                        if current_building in self.lights_on:
+                            self.got_this_time.append(current_building);
+                            self.correct_house_reached(current_building);
+                        elif current_building not in self.got_this_time:
                             self.incorrect_house_reached();
 
-                elif self.buildingMaps[obj.object_type] == Color2:
-                    if (dist < 400):
-                        if Color2 in self.lights_on:
-                            self.got_this_time.append(Color2);
-                            self.correct_house_reached(Color2);
-                        elif Color2 not in self.got_this_time:
-                            self.incorrect_house_reached();
             await asyncio.sleep(0.5);
 
     def correct_house_reached(self, color):
+        index = self.currentLights.index(self.lights[color]);
+        self.currentLights[index] = None;
         self.lights_on.remove(color);
-        self.currentLights[color] = None;
         self.coins += 1;
         back_pack_lights = [None, None, None]
         for i in range(0, self.coins):
@@ -167,7 +158,7 @@ class RemoteControlCozmo:
             else:
                 back_pack_lights[int(i/2)] = Colors.WHITE
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
-        self.cubes[0].set_light_corners(self.currentLights[Color1], self.currentLights[Color2],self.currentLights[Color3], self.currentLights[Color4]);
+        self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1],self.currentLights[2], self.currentLights[3]);
         self.turned_lights_on_this_time = False;
         anim_name = self.key_code_to_anim_name(ord('3'))
         self.play_animation(anim_name)
@@ -181,7 +172,10 @@ class RemoteControlCozmo:
             self.coins = 0;
         back_pack_lights = [None, None, None]
         for i in range(0, self.coins):
-            back_pack_lights[i] = Colors.CYAN
+            if i%2 == 0:
+                back_pack_lights[int(i/2)] = Colors.GRAY
+            else:
+                back_pack_lights[int(i/2)] = Colors.WHITE
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
         anim_name = self.key_code_to_anim_name(ord('2'))
         self.play_animation(anim_name)
@@ -263,38 +257,26 @@ class RemoteControlCozmo:
             return False
 
     def light_cube(self,rndnum,forced=False):
+        if len(self.lights_on) > 3:
+            return;
+
         self.turned_lights_on_this_time = True;
         self.penalised_this_time = False;
         self.got_this_time = [];
 
-        if rndnum == 0:
-            if Color1 not in self.lights_on:
-                self.lights_on.append(Color1);
-            elif forced == True:
-                self.lights_on.remove(Color1);
-                self.currentLights[Color1] = None;
-        elif rndnum == 1:
-            if Color2 not in self.lights_on:
-                self.lights_on.append(Color2);
-            elif forced == True:
-                self.lights_on.remove(Color2);
-                self.currentLights[Color2] = None;
-        elif rndnum == 2:
-            if Color3 not in self.lights_on:
-                self.lights_on.append(Color3);
-            elif forced == True:
-                self.lights_on.remove(Color3);
-                self.currentLights[Color3] = None;
-        else:
-            if Color4 not in self.lights_on:
-                self.lights_on.append(Color4);
-            elif forced == True:
-                self.lights_on.remove(Color4);
-                self.currentLights[Color4] = None;
+        color = CColors[rndnum];
+        if color not in self.lights_on:
+            self.lights_on.append(color);
+            for i in range(0,4):
+                if self.currentLights[i] == None:
+                    self.currentLights[i] = self.lights[color]
+                    break;
+        elif forced == True:
+            index = self.currentLights.index(self.lights[color]);
+            self.currentLights[index] = None;
+            self.lights_on.remove(color);
 
-        for light in self.lights_on:
-            self.currentLights[light] = self.lights[light];
-        self.cubes[0].set_light_corners(self.currentLights[Color1], self.currentLights[Color2],self.currentLights[Color3], self.currentLights[Color4]);
+        self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1],self.currentLights[2], self.currentLights[3]);
 
     def handle_key(self, key_code, is_key_down):
         '''Called on any key press or release
@@ -362,8 +344,8 @@ class RemoteControlCozmo:
     def define_custom_objects(self):
 
         self.buildingMaps[CustomObjectTypes.CustomType09] = 'Shop';
-        self.buildingMaps[CustomObjectTypes.CustomType02] = Color1;
-        self.buildingMaps[CustomObjectTypes.CustomType14] = Color2;
+        self.buildingMaps[CustomObjectTypes.CustomType02] = CColors[0];
+        self.buildingMaps[CustomObjectTypes.CustomType14] = CColors[1];
         self.buildingMaps[CustomObjectTypes.CustomType03] = 'b';
         self.buildingMaps[CustomObjectTypes.CustomType04] = 'a';
         self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';
@@ -654,6 +636,6 @@ if __name__ == '__main__':
     cozmo.setup_basic_logging()
     cozmo.robot.Robot.drive_off_charger_on_connect = True  # RC can drive off charger if required
     try:
-        cozmo.connect(run)
+        cozmo.connect_with_tkviewer(run)
     except cozmo.ConnectionError as e:
         sys.exit("A connection error occurred: %s" % e)
