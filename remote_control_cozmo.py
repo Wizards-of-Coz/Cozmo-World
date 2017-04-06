@@ -26,6 +26,7 @@ from Common.colors import Colors
 
 sys.path.append('lib/')
 import flask_helpers
+import _thread
 import cozmo
 import math
 import random
@@ -44,45 +45,34 @@ except ImportError:
     sys.exit("Cannot import from PIL: Do `pip3 install --user Pillow` to install")
 
 
-def create_default_image(image_width, image_height, do_gradient=False):
-    '''Create a place-holder PIL image to use until we have a live feed from Cozmo'''
-    image_bytes = bytearray([0x70, 0x70, 0x70]) * image_width * image_height
-
-    if do_gradient:
-        i = 0
-        for y in range(image_height):
-            for x in range(image_width):
-                image_bytes[i] = int(255.0 * (x / image_width))   # R
-                image_bytes[i+1] = int(255.0 * (y / image_height))  # G
-                image_bytes[i+2] = 0                                # B
-                i += 3
-
-    image = Image.frombytes('RGB', (image_width, image_height), bytes(image_bytes))
-    return image
-
 flask_app = Flask(__name__)
 remote_control_cozmo = None
-_default_camera_image = create_default_image(320, 240)
+
+Color1 = "Green"
+Color2 = "Red"
+Color3 = "Blue"
+Color4 = "Yellow"
 
 class RemoteControlCozmo:
 
-    reactionDict = {"happy" : {"emo":['anim_memorymatch_successhand_cozmo_02','anim_memorymatch_successhand_player_02','anim_rtpkeepaway_playeryes_03','anim_rtpkeepaway_playeryes_02','anim_sparking_success_01','anim_reacttoblock_ask_01','anim_reacttoblock_happydetermined_02']},
-                    "very_happy":{'emo':['anim_memorymatch_successhand_cozmo_03','anim_memorymatch_successhand_cozmo_04']},
-                    "sad":{'emo':['anim_driving_upset_start_01','anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02']},
-                    "angry":{'emo':['anim_bored_01','anim_bored_02','anim_keepaway_losegame_03','anim_keepaway_losehand_03','anim_speedtap_lookatplayer','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
-                    "idle":{'emo':['anim_sparking_idle_03']},
-                    "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_bored_event_02','anim_bored_event_04']}}
+    reactionDict = {"happy":{'emo':['anim_memorymatch_successhand_cozmo_03','anim_memorymatch_successhand_cozmo_04']},
+                    "sad":{'emo':['anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
+                    "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_driving_upset_start_01']}}
 
     buildingMaps = {}
     coins = 0;
-    light_on = False
+    lights_on = []
+    turned_lights_on_this_time = False;
+    currentLights = {Color1: None, Color2: None, Color3: None, Color4: None}
+    penalised_this_time = False;
+    got_this_time = False;
+    pizza_queue = [];
 
     def __init__(self, coz):
 
         self.cozmo = coz
 
-        self.lightBool = [False,False,False,False]
-        self.lights = [Colors.GREEN, Colors.RED, Colors.BLUE, Colors.YELLOW, None]
+        self.lights = {Color1: Colors.GREEN, Color2: Colors.RED, Color3: Colors.BLUE, Color4: Colors.YELLOW, "None":None}
 
         self.action_queue = []
 
@@ -93,11 +83,9 @@ class RemoteControlCozmo:
 
         self.text_to_say = "Hi I'm Cozmo"
 
-        self.anims_for_keys = ["idle","bored",  # 1
-                                  "angry",  # 2
-                                  "sad",  # 3
-                                  "happy",  # 4
-                                  "very_happy",  # 5
+        self.anims_for_keys = ["bored",  # 1
+                                  "sad",  # 2
+                                  "happy",  # 3
                                  ]
         self.cozmo.set_lift_height(0,in_parallel=True);
         self.cozmo.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/8,in_parallel=True)
@@ -106,6 +94,7 @@ class RemoteControlCozmo:
         self.measuring_dist = False;
 
         self.define_custom_objects();
+        _thread.start_new_thread(self.start_Pizza_Thread, ())
 
         self.cubes = None
         try:
@@ -125,28 +114,77 @@ class RemoteControlCozmo:
                 print("Not found");
 
 
+    def start_Pizza_Thread(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.pizzaSpawning())
+
+    async def pizzaSpawning(self):
+        rndnum = random.randint(0, 3);
+        if rndnum not in self.pizza_queue:
+            self.pizza_queue.append(rndnum);
+        rndTime = random.randint(1,10);
+        await asyncio.sleep(rndTime);
+        await self.pizzaSpawning();
+
     async def measure_distance_visible_objects(self):
         while True:
             for obj in self.visible_objects:
                 dist = self.robots_distance_to_object(self.cozmo, obj);
                 if self.buildingMaps[obj.object_type] == "Shop":
                     if(dist < 400):
-                        self.light_on = True;
-                        self.cubes[0].set_light_corners(self.lights[0],self.lights[4],self.lights[4],self.lights[4]);
-                elif self.buildingMaps[obj.object_type] == "House1":
-                    if (dist < 400):
-                        if self.light_on:
-                            self.coins += 1;
-                            back_pack_lights = [None,None,None]
-                            for i in range(0,self.coins):
-                                back_pack_lights[i] = Colors.CYAN
-                            print(back_pack_lights);
-                            self.cozmo.set_backpack_lights(None,back_pack_lights[0],back_pack_lights[1],back_pack_lights[2],None);
-                        self.light_on = False;
-                        self.cubes[0].set_lights_off();
+                        if len(self.pizza_queue) == 0:
+                            continue;
+                        for pizza in self.pizza_queue:
+                            self.light_cube(pizza);
+                        self.pizza_queue = []
 
+                elif self.buildingMaps[obj.object_type] == Color1:
+                    if (dist < 400):
+                        if Color1 in self.lights_on:
+                            self.got_this_time.append(Color1);
+                            self.correct_house_reached(Color1);
+                        elif Color1 not in self.got_this_time:
+                            self.incorrect_house_reached();
+
+                elif self.buildingMaps[obj.object_type] == Color2:
+                    if (dist < 400):
+                        if Color2 in self.lights_on:
+                            self.got_this_time.append(Color2);
+                            self.correct_house_reached(Color2);
+                        elif Color2 not in self.got_this_time:
+                            self.incorrect_house_reached();
             await asyncio.sleep(0.5);
 
+    def correct_house_reached(self, color):
+        self.lights_on.remove(color);
+        self.currentLights[color] = None;
+        self.coins += 1;
+        back_pack_lights = [None, None, None]
+        for i in range(0, self.coins):
+            if i%2 == 0:
+                back_pack_lights[int(i/2)] = Colors.GRAY
+            else:
+                back_pack_lights[int(i/2)] = Colors.WHITE
+        self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
+        self.cubes[0].set_light_corners(self.currentLights[Color1], self.currentLights[Color2],self.currentLights[Color3], self.currentLights[Color4]);
+        self.turned_lights_on_this_time = False;
+        anim_name = self.key_code_to_anim_name(ord('3'))
+        self.play_animation(anim_name)
+
+    def incorrect_house_reached(self):
+        if self.penalised_this_time == True or len(self.lights_on)==0:
+            return;
+        self.penalised_this_time = True;
+        self.coins -= 1;
+        if self.coins < 0:
+            self.coins = 0;
+        back_pack_lights = [None, None, None]
+        for i in range(0, self.coins):
+            back_pack_lights[i] = Colors.CYAN
+        self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
+        anim_name = self.key_code_to_anim_name(ord('2'))
+        self.play_animation(anim_name)
 
     async def on_object_appeared(self, event, *, obj, **kw):
         if 'Custom' in str(type(obj)):
@@ -156,7 +194,6 @@ class RemoteControlCozmo:
             asyncio.ensure_future(self.measure_distance_visible_objects());
 
     async def on_object_disappeared(self, event, *, obj, **kw):
-        print("dis");
         if obj in self.visible_objects:
             self.visible_objects.remove(obj);
 
@@ -178,7 +215,7 @@ class RemoteControlCozmo:
     def joystick_move(self,angle,force):
         forward_speed = 50 + force*30;
         turn_speed = 30;
-        
+
         if(angle > 45 and angle < 135):
             direction = "up";
         elif(angle < 45 or angle > 315):
@@ -225,15 +262,39 @@ class RemoteControlCozmo:
         except cozmo.exceptions.RobotBusy:
             return False
 
-    def light_cube(self,side):
-        self.lightBool[side] = not self.lightBool[side];
-        setLights = [None,None,None,None]
-        i = 0;
-        for b in self.lightBool:
-            if b == True:
-                setLights[i] = self.lights[i];
-            i+=1;
-        self.cubes[0].set_light_corners(setLights[0],setLights[1],setLights[2],setLights[3]); 
+    def light_cube(self,rndnum,forced=False):
+        self.turned_lights_on_this_time = True;
+        self.penalised_this_time = False;
+        self.got_this_time = [];
+
+        if rndnum == 0:
+            if Color1 not in self.lights_on:
+                self.lights_on.append(Color1);
+            elif forced == True:
+                self.lights_on.remove(Color1);
+                self.currentLights[Color1] = None;
+        elif rndnum == 1:
+            if Color2 not in self.lights_on:
+                self.lights_on.append(Color2);
+            elif forced == True:
+                self.lights_on.remove(Color2);
+                self.currentLights[Color2] = None;
+        elif rndnum == 2:
+            if Color3 not in self.lights_on:
+                self.lights_on.append(Color3);
+            elif forced == True:
+                self.lights_on.remove(Color3);
+                self.currentLights[Color3] = None;
+        else:
+            if Color4 not in self.lights_on:
+                self.lights_on.append(Color4);
+            elif forced == True:
+                self.lights_on.remove(Color4);
+                self.currentLights[Color4] = None;
+
+        for light in self.lights_on:
+            self.currentLights[light] = self.lights[light];
+        self.cubes[0].set_light_corners(self.currentLights[Color1], self.currentLights[Color2],self.currentLights[Color3], self.currentLights[Color4]);
 
     def handle_key(self, key_code, is_key_down):
         '''Called on any key press or release
@@ -241,34 +302,42 @@ class RemoteControlCozmo:
         '''
         # Handle any keys being released (e.g. the end of a key-click)
         if not is_key_down:
-            if (key_code >= ord('0')) and (key_code <= ord('5')):
+            if (key_code >= ord('1')) and (key_code <= ord('3')):
                 anim_name = self.key_code_to_anim_name(key_code)
                 self.play_animation(anim_name)
             elif key_code == 37:
-                self.light_cube(2);
+                self.light_cube(2,forced=True);
             elif key_code == 38:
-                self.light_cube(1);
+                self.light_cube(1,forced=True);
             elif key_code == 39:
-                self.light_cube(0);
+                self.light_cube(0,forced=True);
             elif key_code == 40:
-                self.light_cube(3);
+                self.light_cube(3,forced=True);
             elif key_code == ord(' '):
                 self.say_text(self.text_to_say)
 
     def key_code_to_anim_name(self, key_code):
-        key_num = key_code - ord('0')
+        key_num = key_code - ord('1')
         anim_category = self.anims_for_keys[key_num]
         category_arr = self.reactionDict[anim_category]['emo']
         anim_name = random.choice (category_arr)
         return anim_name
 
+    def reset_head_position(self, angle):
+        try:
+            self.cozmo.set_head_angle(cozmo.util.Angle(degrees=angle));
+            return True
+        except cozmo.exceptions.RobotBusy:
+            return False
+
     def say_text(self, text_to_say):
         self.queue_action((self.try_say_text, text_to_say))
         self.update()
 
-
     def play_animation(self, anim_name):
         self.queue_action((self.try_play_anim, anim_name))
+        self.update()
+        self.queue_action((self.reset_head_position, 30))
         self.update()
 
 
@@ -293,8 +362,9 @@ class RemoteControlCozmo:
     def define_custom_objects(self):
 
         self.buildingMaps[CustomObjectTypes.CustomType09] = 'Shop';
-        self.buildingMaps[CustomObjectTypes.CustomType02] = 'House1';
-        self.buildingMaps[CustomObjectTypes.CustomType03] = 't';
+        self.buildingMaps[CustomObjectTypes.CustomType02] = Color1;
+        self.buildingMaps[CustomObjectTypes.CustomType14] = Color2;
+        self.buildingMaps[CustomObjectTypes.CustomType03] = 'b';
         self.buildingMaps[CustomObjectTypes.CustomType04] = 'a';
         self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';
         self.buildingMaps[CustomObjectTypes.CustomType06] = 'i';
@@ -304,7 +374,6 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType11] = 'd';
         self.buildingMaps[CustomObjectTypes.CustomType12] = 'l';
         self.buildingMaps[CustomObjectTypes.CustomType13] = 'c';
-        self.buildingMaps[CustomObjectTypes.CustomType14] = 'u';
         self.buildingMaps[CustomObjectTypes.CustomType15] = 'm';
         self.buildingMaps[CustomObjectTypes.CustomType16] = 'w';
         self.buildingMaps[CustomObjectTypes.CustomType17] = 'e';
@@ -506,16 +575,6 @@ def handle_index_page():
     </html>
     '''
 
-@flask_app.route("/cozmoImage")
-def handle_cozmoImage():
-    '''Called very frequently from Javascript to request the latest camera image'''
-    if remote_control_cozmo:
-        image = remote_control_cozmo.cozmo.world.latest_image
-        if image:
-            image = image.raw_image
-            return flask_helpers.serve_pil_image(image)
-    return flask_helpers.serve_pil_image(_default_camera_image)
-
 @flask_app.route('/updateCozmo', methods=['POST'])
 def handle_updateCozmo():
     '''Called very frequently from Javascript to provide an update loop'''
@@ -538,14 +597,6 @@ def handle_joystickPosition():
     message = json.loads(request.data.decode("utf-8"))
     if remote_control_cozmo:
         remote_control_cozmo.joystick_move(message['angle'],message['force']);
-    return ""
-
-@flask_app.route('/joystickStart', methods=['POST'])
-def handle_joystickStart():
-    '''Called from Javascript whenever the joystick position is modified'''
-    message = json.loads(request.data.decode("utf-8"))
-    if remote_control_cozmo:
-        remote_control_cozmo.joystick_start();
     return ""
 
 @flask_app.route('/joystickEnd', methods=['POST'])
@@ -573,25 +624,6 @@ def handle_liftEnd():
     message = json.loads(request.data.decode("utf-8"))
     if remote_control_cozmo:
         remote_control_cozmo.update_lift(0);
-    return ""
-
-@flask_app.route('/headMove', methods=['POST'])
-def handle_headMove():
-    '''Called from Javascript whenever the joystick position is modified'''
-    message = json.loads(request.data.decode("utf-8"))
-    if remote_control_cozmo:
-        if(message['angle'] < 180):
-            remote_control_cozmo.update_head(1);
-        else:
-            remote_control_cozmo.update_head(-1);
-    return ""
-
-@flask_app.route('/headEnd', methods=['POST'])
-def handle_headEnd():
-    '''Called from Javascript whenever the joystick position is modified'''
-    message = json.loads(request.data.decode("utf-8"))
-    if remote_control_cozmo:
-        remote_control_cozmo.update_head(0);
     return ""
 
 @flask_app.route('/keydown', methods=['POST'])
