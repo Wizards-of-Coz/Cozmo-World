@@ -49,11 +49,14 @@ flask_app = Flask(__name__)
 remote_control_cozmo = None
 
 CColors = ["Green", "Red", "Blue", "Yellow", "Magenta"]
+Shop = "Shop"
+Icecream = "Icecream"
 
 class RemoteControlCozmo:
 
-    reactionDict = {"happy":{'emo':['anim_memorymatch_successhand_cozmo_03','anim_memorymatch_successhand_cozmo_04']},
+    reactionDict = {"happy":{'emo':['anim_memorymatch_solo_successgame_player_01','anim_memorymatch_successhand_cozmo_04','anim_memorymatch_successhand_cozmo_02','anim_reacttoblock_success_01']},
                     "sad":{'emo':['anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
+                    "icecream": {'emo': ['anim_greeting_happy_01','anim_greeting_happy_03','anim_fistbump_success_01']},
                     "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_driving_upset_start_01']}}
 
     buildingMaps = {}
@@ -63,12 +66,14 @@ class RemoteControlCozmo:
     currentLights = [None,None,None,None]
     lights = {CColors[0]: Colors.GREEN, CColors[1]: Colors.RED, CColors[2]: Colors.BLUE, CColors[3]: Colors.YELLOW, CColors[4]: Colors.MAGENTA}
     penalised_this_time = False
-    got_this_time = False
+    got_this_time = []
     pizza_queue = []
+    can_have_icecream = True;
 
     def __init__(self, coz):
-
         self.cozmo = coz
+
+        self.define_custom_objects();
 
         self.action_queue = []
 
@@ -77,11 +82,12 @@ class RemoteControlCozmo:
         self.head_up = 0
         self.head_down = 0
 
-        self.text_to_say = "Hi I'm Cozmo"
+        self.text_to_say = ""
 
         self.anims_for_keys = ["bored",  # 1
                                   "sad",  # 2
                                   "happy",  # 3
+                               "icecream", #4
                                  ]
         self.cozmo.set_lift_height(0,in_parallel=True);
         self.cozmo.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/8,in_parallel=True)
@@ -89,7 +95,6 @@ class RemoteControlCozmo:
         self.visible_objects = []
         self.measuring_dist = False;
 
-        self.define_custom_objects();
         _thread.start_new_thread(self.start_Pizza_Thread, ())
 
         self.cubes = None
@@ -116,10 +121,10 @@ class RemoteControlCozmo:
         loop.run_until_complete(self.pizzaSpawning())
 
     async def pizzaSpawning(self):
-        rndnum = random.randint(0, 4);
+        rndnum = random.randint(0, 3);
         if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4:
             self.pizza_queue.append(rndnum);
-        rndTime = random.randint(10,200);
+        rndTime = random.randint(10,60);
         await asyncio.sleep(rndTime);
         await self.pizzaSpawning();
 
@@ -128,14 +133,13 @@ class RemoteControlCozmo:
             for obj in self.visible_objects:
                 dist = self.robots_distance_to_object(self.cozmo, obj);
                 current_building = self.buildingMaps[obj.object_type];
-                if current_building == "Shop":
+                if current_building == Shop:
                     if(dist < 400):
                         if len(self.pizza_queue) == 0:
                             continue;
                         for pizza in self.pizza_queue:
                             self.light_cube(pizza);
                         self.pizza_queue = []
-
                 elif current_building in CColors:
                     if (dist < 400):
                         if current_building in self.lights_on:
@@ -143,8 +147,29 @@ class RemoteControlCozmo:
                             self.correct_house_reached(current_building);
                         elif current_building not in self.got_this_time:
                             self.incorrect_house_reached();
-
+                elif current_building == Icecream:
+                    if dist < 400 and self.can_have_icecream and self.coins > 0:
+                        self.can_have_icecream = False;
+                        asyncio.ensure_future(self.icecream_reached());
             await asyncio.sleep(0.5);
+
+    async def icecream_reached(self):
+        self.coins -= 1;
+        if self.coins < 0:
+            self.coins = 0;
+        back_pack_lights = [None, None, None]
+        for i in range(0, self.coins):
+            if i % 2 == 0:
+                back_pack_lights[int(i / 2)] = Colors.GRAY
+            else:
+                back_pack_lights[int(i / 2)] = Colors.WHITE
+        self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
+        await self.cozmo.say_text("Yummy").wait_for_completed();
+        anim_name = self.key_code_to_anim_name(ord('4'))
+        self.play_animation(anim_name)
+
+        await asyncio.sleep(30);
+        self.can_have_icecream = True;
 
     def correct_house_reached(self, color):
         index = self.currentLights.index(self.lights[color]);
@@ -343,21 +368,23 @@ class RemoteControlCozmo:
 
     def define_custom_objects(self):
 
-        self.buildingMaps[CustomObjectTypes.CustomType09] = 'Shop';
+        self.buildingMaps[CustomObjectTypes.CustomType09] = Shop;
         self.buildingMaps[CustomObjectTypes.CustomType02] = CColors[0];
         self.buildingMaps[CustomObjectTypes.CustomType14] = CColors[1];
-        self.buildingMaps[CustomObjectTypes.CustomType03] = 'b';
-        self.buildingMaps[CustomObjectTypes.CustomType04] = 'a';
+        self.buildingMaps[CustomObjectTypes.CustomType16] = CColors[2];
+        self.buildingMaps[CustomObjectTypes.CustomType04] = CColors[3];
+        self.buildingMaps[CustomObjectTypes.CustomType15] = CColors[4];
+        self.buildingMaps[CustomObjectTypes.CustomType07] = Icecream;
+
+        self.buildingMaps[CustomObjectTypes.CustomType03] = 'n';
         self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';
         self.buildingMaps[CustomObjectTypes.CustomType06] = 'i';
-        self.buildingMaps[CustomObjectTypes.CustomType07] = 'n';
         self.buildingMaps[CustomObjectTypes.CustomType08] = 's';
         self.buildingMaps[CustomObjectTypes.CustomType10] = 'r';
         self.buildingMaps[CustomObjectTypes.CustomType11] = 'd';
         self.buildingMaps[CustomObjectTypes.CustomType12] = 'l';
         self.buildingMaps[CustomObjectTypes.CustomType13] = 'c';
-        self.buildingMaps[CustomObjectTypes.CustomType15] = 'm';
-        self.buildingMaps[CustomObjectTypes.CustomType16] = 'w';
+
         self.buildingMaps[CustomObjectTypes.CustomType17] = 'e';
 
 
