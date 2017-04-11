@@ -32,6 +32,7 @@ import math
 import random
 import asyncio
 import numpy as np
+import time
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 
 try:
@@ -52,11 +53,14 @@ CColors = ["Green", "Red", "Blue", "Yellow", "Magenta"]
 Shop = "Shop"
 Icecream = "Icecream"
 
-class RemoteControlCozmo:
+TIMER_1 = 30;
+TIMER_2 = 60;
+TIMER_3 = 90;
 
-    reactionDict = {"happy":{'emo':['anim_memorymatch_solo_successgame_player_01','anim_memorymatch_successhand_cozmo_04','anim_memorymatch_successhand_cozmo_02','anim_reacttoblock_success_01']},
+class RemoteControlCozmo:
+    reactionDict = {"happy":{'emo':['anim_memorymatch_solo_successgame_player_01','anim_memorymatch_successhand_cozmo_02','anim_reacttoblock_success_01','anim_fistbump_success_01']},
                     "sad":{'emo':['anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
-                    "icecream": {'emo': ['anim_greeting_happy_01','anim_greeting_happy_03','anim_fistbump_success_01']},
+                    "icecream": {'emo': ['anim_greeting_happy_01','anim_greeting_happy_03','anim_memorymatch_successhand_cozmo_04']},
                     "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_driving_upset_start_01']}}
 
     buildingMaps = {}
@@ -65,6 +69,8 @@ class RemoteControlCozmo:
     turned_lights_on_this_time = False
     currentLights = [None,None,None,None]
     lights = {CColors[0]: Colors.GREEN, CColors[1]: Colors.RED, CColors[2]: Colors.BLUE, CColors[3]: Colors.YELLOW, CColors[4]: Colors.MAGENTA}
+    lights_1 = {CColors[0]: Colors.GREEN_1, CColors[1]: Colors.RED_1, CColors[2]: Colors.BLUE_1, CColors[3]: Colors.YELLOW_1, CColors[4]: Colors.MAGENTA_1}
+    lights_2 = {CColors[0]: Colors.GREEN_2, CColors[1]: Colors.RED_2, CColors[2]: Colors.BLUE_2, CColors[3]: Colors.YELLOW_2, CColors[4]: Colors.MAGENTA_2}
     penalised_this_time = False
     got_this_time = []
     pizza_queue = []
@@ -123,7 +129,7 @@ class RemoteControlCozmo:
     async def pizzaSpawning(self):
         rndnum = random.randint(0, 3);
         if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4:
-            self.pizza_queue.append(rndnum);
+            self.pizza_queue.append({'time':time.time(), 'pizza':rndnum});
         rndTime = random.randint(10,60);
         await asyncio.sleep(rndTime);
         await self.pizzaSpawning();
@@ -142,7 +148,7 @@ class RemoteControlCozmo:
                         self.pizza_queue = []
                 elif current_building in CColors:
                     if (dist < 400):
-                        if current_building in self.lights_on:
+                        if self.is_color_in_lights_on(current_building):
                             self.got_this_time.append(current_building);
                             self.correct_house_reached(current_building);
                         elif current_building not in self.got_this_time:
@@ -172,9 +178,13 @@ class RemoteControlCozmo:
         self.can_have_icecream = True;
 
     def correct_house_reached(self, color):
-        index = self.currentLights.index(self.lights[color]);
+        l_index = self.idex_of_color_in_lights_on(color);
+        index = self.currentLights.index(self.lights_on[l_index]['light']);
         self.currentLights[index] = None;
-        self.lights_on.remove(color);
+        for item in self.lights_on:
+            if item['color'] == color:
+                self.lights_on.remove(item);
+                break;
         self.coins += 1;
         back_pack_lights = [None, None, None]
         for i in range(0, self.coins):
@@ -281,7 +291,7 @@ class RemoteControlCozmo:
         except cozmo.exceptions.RobotBusy:
             return False
 
-    def light_cube(self,rndnum,forced=False):
+    def light_cube(self,pizza,forced=False):
         if len(self.lights_on) > 3:
             return;
 
@@ -289,19 +299,36 @@ class RemoteControlCozmo:
         self.penalised_this_time = False;
         self.got_this_time = [];
 
-        color = CColors[rndnum];
-        if color not in self.lights_on:
-            self.lights_on.append(color);
+        color = CColors[pizza['pizza']];
+        if not self.is_color_in_lights_on(color):
             for i in range(0,4):
                 if self.currentLights[i] == None:
+                    self.lights_on.append({'color': color, 'time': pizza['time'], 'light': self.lights[color]});
                     self.currentLights[i] = self.lights[color]
                     break;
         elif forced == True:
             index = self.currentLights.index(self.lights[color]);
             self.currentLights[index] = None;
-            self.lights_on.remove(color);
+            for item in self.lights_on:
+                if item['color']==color:
+                    self.lights_on.remove(item);
+                    break;
 
         self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1],self.currentLights[2], self.currentLights[3]);
+
+    def is_color_in_lights_on(self,color):
+        for item in self.lights_on:
+            if item['color'] == color:
+                return True;
+        return False;
+
+    def idex_of_color_in_lights_on(self,color):
+        i = 0;
+        for item in self.lights_on:
+            if item['color'] == color:
+                return i;
+            i += 1;
+        return -1;
 
     def handle_key(self, key_code, is_key_down):
         '''Called on any key press or release
@@ -313,13 +340,13 @@ class RemoteControlCozmo:
                 anim_name = self.key_code_to_anim_name(key_code)
                 self.play_animation(anim_name)
             elif key_code == 37:
-                self.light_cube(2,forced=True);
+                self.light_cube({'time':time.time(), 'pizza':2},forced=True);
             elif key_code == 38:
-                self.light_cube(1,forced=True);
+                self.light_cube({'time':time.time(), 'pizza':1},forced=True);
             elif key_code == 39:
-                self.light_cube(0,forced=True);
+                self.light_cube({'time':time.time(), 'pizza':0},forced=True);
             elif key_code == 40:
-                self.light_cube(3,forced=True);
+                self.light_cube({'time':time.time(), 'pizza':3},forced=True);
             elif key_code == ord(' '):
                 self.say_text(self.text_to_say)
 
@@ -354,6 +381,33 @@ class RemoteControlCozmo:
             queued_action, action_args = self.action_queue[0]
             if queued_action(action_args):
                 self.action_queue.pop(0)
+
+        for light in self.lights_on:
+            elapsed = time.time() - light['time'];
+            print(elapsed);
+            if elapsed > TIMER_3:
+                index = self.currentLights.index(light['light']);
+                self.currentLights[index] = None;
+                for item in self.lights_on:
+                    if item['color'] == light['color']:
+                        self.lights_on.remove(item);
+                        break;
+                self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3]);
+            elif elapsed > TIMER_2:
+                if light['light'] == self.lights_1[light['color']]:
+                    continue;
+                index = self.currentLights.index(light['light']);
+                light['light'] = self.lights_1[light['color']];
+                self.currentLights[index] = self.lights_1[light['color']];
+                self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3]);
+            elif elapsed > TIMER_1:
+                if light['light'] == self.lights_2[light['color']]:
+                    continue;
+                index = self.currentLights.index(light['light']);
+                light['light'] = self.lights_2[light['color']];
+                self.currentLights[index] = self.lights_2[light['color']];
+                self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3]);
+
 
     def update_lift(self, up_or_down):
         lift_speed = 2;
@@ -462,7 +516,7 @@ def handle_index_page():
         <head>
             <title>remote_control_cozmo.py display</title>
             <link type="text/css" rel="stylesheet" href="static/styles.css"/>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <meta name="viewport" content="width=device-width, user-scalable=no" />
             <script src="static/dist/nipplejs.js" charset="utf-8"></script>
         </head>
         <body class="unselectable">
@@ -484,18 +538,18 @@ def handle_index_page():
                     <td width=5%></td>
                     <td>
                         <div style="text-align:center;width:100%;">
-                          <button class="unselectable" style="height:80px;width:150px" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"><img src="static/images/up.png" height="100%"></button><br><br><br>
-                          <button class="unselectable" style="height:80px;width:150px" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"><img src="static/images/left.png" height="100%"></button>
+                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
+                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
                           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                          <button class="unselectable" style="height:80px;width:150px" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"><img src="static/images/right.png" height="100%"></button><br><br><br>
-                          <button class="unselectable" style="height:80px;width:150px" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"><img src="static/images/down.png" height="100%"></button>
+                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
+                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
                         </div>
                     </td>
                     <td width=40%></td>
                     <td>
                         <div style="text-align:center;width:100%;">
-                          <button class="unselectable" style="height:80px;width:150px" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()" ><img src="static/images/up.png" height="100%"></button><br><br><br><br>
-                          <button class="unselectable" style="height:80px;width:150px;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()"><img src="static/images/down.png" height="100%"></button>
+                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()" ></button><br><br><br><br>
+                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()"></button>
                         </div>
                     </td>
 
@@ -504,6 +558,9 @@ def handle_index_page():
 
             <script type="text/javascript">
                 var gisControllingHead = false
+                document.addEventListener('gesturestart', function (e) {
+                    e.preventDefault();
+                });
 
                 function moveup() {
                     angle = 90;
