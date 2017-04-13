@@ -56,9 +56,9 @@ CIcecream = "Icecream"
 CStatue = "Statue"
 CArcade = "Arcade"
 
-TIMER_1 = 30;
-TIMER_2 = 60;
-TIMER_3 = 90;
+TIMER_1 = 90;
+TIMER_2 = 120;
+TIMER_3 = 150;
 pizzaSpawned = False
 
 class RemoteControlCozmo:
@@ -130,6 +130,7 @@ class RemoteControlCozmo:
             if len(self.cubes) > 0:
                 self.cozmo.camera.image_stream_enabled = True;
                 self.cubes[0].set_lights_off();
+                # self.cubes[0].set_lights(Colors.BLUE);
                 self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True);
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.on_object_appeared)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
@@ -149,14 +150,14 @@ class RemoteControlCozmo:
         rndTime = random.randint(10, 20);
         await asyncio.sleep(rndTime);
 
-        rndnum = random.randint(0, 3);
+        rndnum = random.randint(0, 4);
+
         if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4 and self.can_see_arcade:
             print("PIZZA SPAWNED");
             pizzaSpawned = True
             self.pizza_queue.append({'time':time.time(), 'pizza':rndnum})
 
         rndTime = random.randint(0,90);
-        print(rndTime);
         await asyncio.sleep(rndTime);
 
         await self.pizzaSpawning();
@@ -222,8 +223,20 @@ class RemoteControlCozmo:
             await self.cozmo.play_anim(self.ting).wait_for_completed();
         except cozmo.exceptions.RobotBusy:
             print("robot busy");
-        await self.cozmo.set_lift_height(1.0, in_parallel=True).wait_for_completed();
-        await self.cozmo.set_lift_height(0.0, in_parallel=True).wait_for_completed();
+        try:
+            await self.cozmo.set_lift_height(1.0, in_parallel=True).wait_for_completed();
+        except cozmo.exceptions.RobotBusy:
+            print("robot busy");
+        try:
+            await self.cozmo.say_text("oh, Cozmo", duration_scalar=2).wait_for_completed();
+        except cozmo.exceptions.RobotBusy:
+            print("robot busy");
+        try:
+            await self.cozmo.set_lift_height(0.0, in_parallel=True).wait_for_completed();
+        except cozmo.exceptions.RobotBusy:
+            print("robot busy");
+
+        self.queue_action((self.reset_head_position, 30))
 
         await asyncio.sleep(60);
         self.can_see_statue = True;
@@ -520,7 +533,7 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType04] = CColors[3];
         self.buildingMaps[CustomObjectTypes.CustomType15] = CColors[4];
         self.buildingMaps[CustomObjectTypes.CustomType07] = CIcecream;
-        self.buildingMaps[CustomObjectTypes.CustomType17] = CStatue;
+        self.buildingMaps[CustomObjectTypes.CustomType11] = CStatue;
         self.buildingMaps[CustomObjectTypes.CustomType13] = CArcade;
 
         self.buildingMaps[CustomObjectTypes.CustomType03] = 'n';
@@ -528,7 +541,7 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType06] = 'i';
         self.buildingMaps[CustomObjectTypes.CustomType08] = 's';
         self.buildingMaps[CustomObjectTypes.CustomType10] = 'r';
-        self.buildingMaps[CustomObjectTypes.CustomType11] = 'd';
+        self.buildingMaps[CustomObjectTypes.CustomType17] = 'd';
         self.buildingMaps[CustomObjectTypes.CustomType12] = 'l';
 
 
