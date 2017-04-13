@@ -36,7 +36,7 @@ import time
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 
 try:
-    from flask import Flask, request
+    from flask import Flask, request, render_template
 except ImportError:
     sys.exit("Cannot import from flask: Do `pip3 install --user flask` to install")
 
@@ -52,16 +52,23 @@ remote_control_cozmo = None
 CColors = ["Green", "Red", "Blue", "Yellow", "Magenta"]
 Shop = "Shop"
 Icecream = "Icecream"
+Statue = "Statue"
+Arcade = "Arcade"
 
 TIMER_1 = 30;
 TIMER_2 = 60;
 TIMER_3 = 90;
+pizzaSpawned = False
 
 class RemoteControlCozmo:
     reactionDict = {"happy":{'emo':['anim_memorymatch_solo_successgame_player_01','anim_memorymatch_successhand_cozmo_02','anim_reacttoblock_success_01','anim_fistbump_success_01']},
                     "sad":{'emo':['anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
                     "icecream": {'emo': ['anim_greeting_happy_01','anim_greeting_happy_03','anim_memorymatch_successhand_cozmo_04']},
                     "bored":{'emo':['anim_bored_01','anim_bored_02','anim_bored_event_01','anim_driving_upset_start_01']}}
+
+    audioEffects = {"idle":[cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPickup,cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPickup,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceHigh,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceRoll,cozmo.anim.Triggers.SoundOnlyTurnSmall]}
+    reverse_audio = 'anim_explorer_drvback_loop_01'
+    ting = 'anim_cozmosays_getin_short_01'
 
     buildingMaps = {}
     coins = 0
@@ -74,7 +81,11 @@ class RemoteControlCozmo:
     penalised_this_time = False
     got_this_time = []
     pizza_queue = []
-    can_have_icecream = True;
+    can_have_icecream = True
+    can_see_statue = True
+    can_see_arcade = True
+
+    is_autonomous_mode = True
 
     def __init__(self, coz):
         self.cozmo = coz
@@ -89,6 +100,8 @@ class RemoteControlCozmo:
         self.head_down = 0
 
         self.text_to_say = ""
+        self.cozmo_audio_effect_interval = random.randint(200,1000)
+        self.update_count = 0;
 
         self.anims_for_keys = ["bored",  # 1
                                   "sad",  # 2
@@ -127,11 +140,21 @@ class RemoteControlCozmo:
         loop.run_until_complete(self.pizzaSpawning())
 
     async def pizzaSpawning(self):
+        global pizzaSpawned;
+
+        rndTime = random.randint(10, 20);
+        await asyncio.sleep(rndTime);
+
         rndnum = random.randint(0, 3);
         if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4:
-            self.pizza_queue.append({'time':time.time(), 'pizza':rndnum});
-        rndTime = random.randint(10,60);
+            print("PIZZA SPAWNED");
+            pizzaSpawned = True
+            self.pizza_queue.append({'time':time.time(), 'pizza':rndnum})
+
+        rndTime = random.randint(0,90);
+        print(rndTime);
         await asyncio.sleep(rndTime);
+
         await self.pizzaSpawning();
 
     async def measure_distance_visible_objects(self):
@@ -157,7 +180,33 @@ class RemoteControlCozmo:
                     if dist < 400 and self.can_have_icecream and self.coins > 0:
                         self.can_have_icecream = False;
                         asyncio.ensure_future(self.icecream_reached());
+                elif current_building == Statue:
+                    if dist < 1000 and self.can_see_statue:
+                        self.can_see_statue = False;
+                        asyncio.ensure_future(self.statue_reached());
+                elif current_building == Arcade:
+                    if dist < 400 and self.can_see_arcade and self.coins > 0:
+                        self.can_see_arcade = False;
+                        asyncio.ensure_future(self.arcade_reached());
+
             await asyncio.sleep(0.5);
+
+    async def arcade_reached(self):
+        # self.is_autonomous_mode = True;
+        print ("ARCADE REACHED");
+        await asyncio.sleep(30);
+        self.can_see_arcade = True;
+
+    async def statue_reached(self):
+        try:
+            await self.cozmo.play_anim(self.ting).wait_for_completed();
+        except cozmo.exceptions.RobotBusy:
+            print("robot busy");
+        await self.cozmo.set_lift_height(1.0, in_parallel=True).wait_for_completed();
+        await self.cozmo.set_lift_height(0.0, in_parallel=True).wait_for_completed();
+
+        await asyncio.sleep(60);
+        self.can_see_statue = True;
 
     async def icecream_reached(self):
         self.coins -= 1;
@@ -226,7 +275,6 @@ class RemoteControlCozmo:
         if obj in self.visible_objects:
             self.visible_objects.remove(obj);
 
-
     def robots_distance_to_object(self,robot, target):
         """
         Returns: The distance (mm) between the robot and the target object
@@ -235,13 +283,13 @@ class RemoteControlCozmo:
                                   target.pose.position.y - robot.pose.position.y))
         return math.sqrt((object_vector ** 2).sum())
 
-    def joystick_start(self):
-        self.cozmo.drive_wheels(0,0,0,0)
-
     def joystick_end(self):
         self.cozmo.drive_wheels(0,0,0,0)
 
     def joystick_move(self,angle,force):
+        if self.is_autonomous_mode:
+            return
+
         forward_speed = 50 + force*30;
         turn_speed = 30;
 
@@ -268,6 +316,9 @@ class RemoteControlCozmo:
         l_wheel_speed = (drive_dir * forward_speed) + (turn_speed * turn_dir)
         r_wheel_speed = (drive_dir * forward_speed) - (turn_speed * turn_dir)
 
+        if drive_dir == -1:
+            self.try_play_anim(self.reverse_audio);
+
         self.cozmo.drive_wheels(l_wheel_speed, r_wheel_speed, l_wheel_speed*4, r_wheel_speed*4)
 
     def queue_action(self, new_action):
@@ -287,6 +338,13 @@ class RemoteControlCozmo:
     def try_play_anim(self, anim_name):
         try:
             self.cozmo.play_anim(name=anim_name)
+            return True
+        except cozmo.exceptions.RobotBusy:
+            return False
+
+    def try_play_anim_trigger(self, anim_trigger):
+        try:
+            self.cozmo.play_anim_trigger(anim_trigger)
             return True
         except cozmo.exceptions.RobotBusy:
             return False
@@ -382,9 +440,14 @@ class RemoteControlCozmo:
             if queued_action(action_args):
                 self.action_queue.pop(0)
 
+        self.update_count += 1;
+        if self.update_count == self.cozmo_audio_effect_interval:
+            self.cozmo_audio_effect_interval = random.randint(200,1000);
+            self.update_count = 0;
+            self.try_play_anim_trigger(self.audioEffects['idle'][random.randint(0,len(self.audioEffects['idle'])-1)]);
+
         for light in self.lights_on:
             elapsed = time.time() - light['time'];
-            print(elapsed);
             if elapsed > TIMER_3:
                 index = self.currentLights.index(light['light']);
                 self.currentLights[index] = None;
@@ -410,6 +473,8 @@ class RemoteControlCozmo:
 
 
     def update_lift(self, up_or_down):
+        if self.is_autonomous_mode:
+            return
         lift_speed = 2;
         lift_vel = up_or_down * lift_speed
         self.cozmo.move_lift(lift_vel)
@@ -420,6 +485,9 @@ class RemoteControlCozmo:
         head_vel = up_or_down * head_speed
         self.cozmo.move_head(head_vel)
 
+    def modechange(self, is_autonomous):
+        self.is_autonomous_mode = is_autonomous;
+
     def define_custom_objects(self):
 
         self.buildingMaps[CustomObjectTypes.CustomType09] = Shop;
@@ -429,6 +497,8 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType04] = CColors[3];
         self.buildingMaps[CustomObjectTypes.CustomType15] = CColors[4];
         self.buildingMaps[CustomObjectTypes.CustomType07] = Icecream;
+        self.buildingMaps[CustomObjectTypes.CustomType17] = Statue;
+        self.buildingMaps[CustomObjectTypes.CustomType13] = Arcade;
 
         self.buildingMaps[CustomObjectTypes.CustomType03] = 'n';
         self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';
@@ -437,9 +507,7 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType10] = 'r';
         self.buildingMaps[CustomObjectTypes.CustomType11] = 'd';
         self.buildingMaps[CustomObjectTypes.CustomType12] = 'l';
-        self.buildingMaps[CustomObjectTypes.CustomType13] = 'c';
 
-        self.buildingMaps[CustomObjectTypes.CustomType17] = 'e';
 
 
         cube_obj_1 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType02,
@@ -511,135 +579,7 @@ class RemoteControlCozmo:
                                                              90, 90, True)
 @flask_app.route("/")
 def handle_index_page():
-    return '''
-    <html>
-        <head>
-            <title>remote_control_cozmo.py display</title>
-            <link type="text/css" rel="stylesheet" href="static/styles.css"/>
-            <meta name="viewport" content="width=device-width, user-scalable=no" />
-            <script src="static/dist/nipplejs.js" charset="utf-8"></script>
-        </head>
-        <body class="unselectable">
-            <h1 style="text-align:center">Cozmo World</h1>
-            <div id="left"></div>
-            <div id="right"></div>
-            <table>
-                <tr>
-                    <td width=5%></td>
-                    <td style="text-align:center;" valign=top>
-                        <h2>Control Movement</h2>
-                    </td>
-                    <td width=40%></td>
-                    <td style="text-align:center;" valign=top>
-                        <h2 id="headLiftText">Control Lift</h2>
-                    </td>
-                </tr>
-                <tr>
-                    <td width=5%></td>
-                    <td>
-                        <div style="text-align:center;width:100%;">
-                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
-                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
-                          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
-                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
-                        </div>
-                    </td>
-                    <td width=40%></td>
-                    <td>
-                        <div style="text-align:center;width:100%;">
-                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()" ></button><br><br><br><br>
-                          <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()"></button>
-                        </div>
-                    </td>
-
-                </tr>
-            </table>
-
-            <script type="text/javascript">
-                var gisControllingHead = false
-                document.addEventListener('gesturestart', function (e) {
-                    e.preventDefault();
-                });
-
-                function moveup() {
-                    angle = 90;
-                    force = 1;
-                    postHttpRequest("joystickMove", {angle,force})
-                }
-                function movedown() {
-                    angle = 270;
-                    force = 1;
-                    postHttpRequest("joystickMove", {angle,force})
-                }
-                function moveleft() {
-                    angle = 180;
-                    force = 1;
-                    postHttpRequest("joystickMove", {angle,force})
-                }
-                function moveright() {
-                    angle = 0;
-                    force = 1;
-                    postHttpRequest("joystickMove", {angle,force})
-                }
-                function stopMove() {
-                    msg = "End";
-                    postHttpRequest("joystickEnd", {msg})
-                }
-
-                function moveupLift() {
-                    angle = 90;
-                    force = 1;
-                    postHttpRequest("liftMove", {angle,force})
-                }
-                function movedownLift() {
-                    angle = 270;
-                    force = 1;
-                    postHttpRequest("liftMove", {angle,force})
-                }
-                function stopMoveLift() {
-                    msg = "End";
-                    postHttpRequest("liftEnd", {msg})
-                }
-
-                function postHttpRequest(url, dataSet)
-                {
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("POST", url, true);
-                    xhr.send( JSON.stringify( dataSet ) );
-                }
-
-                function updateCozmo()
-                {
-                    postHttpRequest("updateCozmo", {} )
-                }
-                setInterval(updateCozmo , 60);
-
-                function handleKeyActivity (e, actionType)
-                {
-                    var keyCode  = (e.keyCode ? e.keyCode : e.which);
-                    postHttpRequest(actionType, {keyCode})
-                }
-
-                document.addEventListener("keydown", function(e) { handleKeyActivity(e, "keydown") } );
-                document.addEventListener("keyup", function(e) { handleKeyActivity(e, "keyup") } );
-
-                function stopEventPropagation(event)
-                {
-                    if (event.stopPropagation)
-                    {
-                        event.stopPropagation();
-                    }
-                    else
-                    {
-                        event.cancelBubble = true
-                    }
-                }
-            </script>
-
-        </body>
-    </html>
-    '''
+    return render_template("index.html")
 
 @flask_app.route('/updateCozmo', methods=['POST'])
 def handle_updateCozmo():
@@ -647,6 +587,14 @@ def handle_updateCozmo():
     if remote_control_cozmo:
         remote_control_cozmo.update()
     return ""
+
+@flask_app.route('/checkPizzaSpawn', methods=['POST'])
+def handle_test():
+    global pizzaSpawned
+    if pizzaSpawned:
+        pizzaSpawned = False;
+        return "true";
+    return "false"
 
 @flask_app.route('/sayText', methods=['POST'])
 def handle_sayText():
@@ -701,6 +649,14 @@ def handle_keydown():
 def handle_keyup():
     '''Called from Javascript whenever a key is down (note: can generate repeat calls if held down)'''
     return handle_key_event(request, is_key_down=False)
+
+
+@flask_app.route('/modechange', methods=['POST'])
+def handle_modechange():
+    message = json.loads(request.data.decode("utf-8"))
+    if remote_control_cozmo:
+        remote_control_cozmo.modechange(message['isRemoteMode'])
+    return "";
 
 def handle_key_event(key_request, is_key_down):
     message = json.loads(key_request.data.decode("utf-8"))

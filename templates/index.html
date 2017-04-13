@@ -1,0 +1,164 @@
+<html>
+    <head>
+        <title>remote_control_cozmo.py display</title>
+        <link type="text/css" rel="stylesheet" href="static/styles.css"/>
+        <meta name="viewport" content="width=device-width, user-scalable=no" />
+        <script src="static/dist/nipplejs.js" charset="utf-8"></script>
+    </head>
+    <body class="unselectable">
+        <h1 style="text-align:center">Cozmo World</h1>
+        <table>
+            <tr>
+                <td width=5%></td>
+                <td style="text-align:center;" valign=top>
+                    <h2>Control Movement</h2>
+                </td>
+                <td width=40%>
+                    <div class="onoffswitch">
+                        <input type="checkbox" onchange="toggleMode()" name="onoffswitch" class="onoffswitch-checkbox" id="myonoffswitch" checked>
+                        <label class="onoffswitch-label" for="myonoffswitch">
+                            <span class="onoffswitch-inner"></span>
+                            <span class="onoffswitch-switch"></span>
+                        </label>
+                    </div>
+                </td>
+                <td style="text-align:center;" valign=top>
+                    <h2 id="headLiftText">Control Lift</h2>
+                </td>
+            </tr>
+            <tr>
+                <td width=5%></td>
+                <td>
+                    <div style="text-align:center;width:100%;">
+                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
+                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
+                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
+                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
+                    </div>
+                </td>
+                <td width=40%></td>
+                <td>
+                    <div style="text-align:center;width:100%;">
+                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()" ></button><br><br><br><br>
+                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()"></button>
+                    </div>
+                </td>
+
+            </tr>
+        </table>
+
+        <script type="text/javascript">
+            var gisControllingHead = false;
+            var isRemoteMode = true;
+
+            document.addEventListener('gesturestart', function (e) {
+                e.preventDefault();
+            });
+
+            document.getElementById("myonoffswitch").checked = true;
+            toggleMode();
+
+            function toggleMode() {
+                isRemoteMode = !document.getElementById("myonoffswitch").checked;
+                postHttpRequest("modechange", {isRemoteMode})
+            }
+
+            function moveup() {
+                angle = 90;
+                force = 1;
+                postHttpRequest("joystickMove", {angle,force})
+            }
+            function movedown() {
+                angle = 270;
+                force = 1;
+                postHttpRequest("joystickMove", {angle,force})
+            }
+            function moveleft() {
+                angle = 180;
+                force = 1;
+                postHttpRequest("joystickMove", {angle,force})
+            }
+            function moveright() {
+                angle = 0;
+                force = 1;
+                postHttpRequest("joystickMove", {angle,force})
+            }
+            function stopMove() {
+                msg = "End";
+                postHttpRequest("joystickEnd", {msg})
+            }
+
+            function moveupLift() {
+                angle = 90;
+                force = 1;
+                postHttpRequest("liftMove", {angle,force})
+            }
+            function movedownLift() {
+                angle = 270;
+                force = 1;
+                postHttpRequest("liftMove", {angle,force})
+            }
+            function stopMoveLift() {
+                msg = "End";
+                postHttpRequest("liftEnd", {msg})
+            }
+
+            function postHttpRequest(url, dataSet)
+            {
+                var xhr = new XMLHttpRequest();
+                if(url == "checkPizzaSpawn") {
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == XMLHttpRequest.DONE) {
+                            if(xhr.responseText == "true") {
+                                playSpawnSound();
+                            }
+                        }
+                    }
+                }
+                xhr.open("POST", url, true);
+                xhr.send( JSON.stringify( dataSet ) );
+            }
+
+            function playSpawnSound() {
+                console.log("play sound");
+                var audio = new Audio('static/sounds/ting.ogg');
+                audio.play();
+            }
+
+            function updateCozmo()
+            {
+                postHttpRequest("updateCozmo", {} )
+            }
+            setInterval(updateCozmo , 60);
+
+            function checkPizzaSpawn()
+            {
+                postHttpRequest("checkPizzaSpawn", {} )
+            }
+            setInterval(checkPizzaSpawn , 60);
+
+            function handleKeyActivity (e, actionType)
+            {
+                var keyCode  = (e.keyCode ? e.keyCode : e.which);
+                postHttpRequest(actionType, {keyCode})
+            }
+
+            document.addEventListener("keydown", function(e) { handleKeyActivity(e, "keydown") } );
+            document.addEventListener("keyup", function(e) { handleKeyActivity(e, "keyup") } );
+
+            function stopEventPropagation(event)
+            {
+                if (event.stopPropagation)
+                {
+                    event.stopPropagation();
+                }
+                else
+                {
+                    event.cancelBubble = true
+                }
+            }
+        </script>
+
+    </body>
+</html>
