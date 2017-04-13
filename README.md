@@ -1,2 +1,2 @@
-# Remote-Control
-Cozmo World Remote Control
+# Cozmo-World
+Cozmo World Experience
