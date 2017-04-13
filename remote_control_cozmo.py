@@ -34,6 +34,7 @@ import asyncio
 import numpy as np
 import time
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
+from Arcade import Arcade
 
 try:
     from flask import Flask, request, render_template
@@ -50,10 +51,10 @@ flask_app = Flask(__name__)
 remote_control_cozmo = None
 
 CColors = ["Green", "Red", "Blue", "Yellow", "Magenta"]
-Shop = "Shop"
-Icecream = "Icecream"
-Statue = "Statue"
-Arcade = "Arcade"
+CShop = "Shop"
+CIcecream = "Icecream"
+CStatue = "Statue"
+CArcade = "Arcade"
 
 TIMER_1 = 30;
 TIMER_2 = 60;
@@ -69,6 +70,8 @@ class RemoteControlCozmo:
     audioEffects = {"idle":[cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPickup,cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPickup,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceHigh,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceRoll,cozmo.anim.Triggers.SoundOnlyTurnSmall]}
     reverse_audio = 'anim_explorer_drvback_loop_01'
     ting = 'anim_cozmosays_getin_short_01'
+
+    arcadeGame = None;
 
     buildingMaps = {}
     coins = 0
@@ -89,6 +92,7 @@ class RemoteControlCozmo:
 
     def __init__(self, coz):
         self.cozmo = coz
+        self.arcadeGame = Arcade(self.cozmo, self);
 
         self.define_custom_objects();
 
@@ -146,7 +150,7 @@ class RemoteControlCozmo:
         await asyncio.sleep(rndTime);
 
         rndnum = random.randint(0, 3);
-        if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4:
+        if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4 and self.can_see_arcade:
             print("PIZZA SPAWNED");
             pizzaSpawned = True
             self.pizza_queue.append({'time':time.time(), 'pizza':rndnum})
@@ -162,7 +166,7 @@ class RemoteControlCozmo:
             for obj in self.visible_objects:
                 dist = self.robots_distance_to_object(self.cozmo, obj);
                 current_building = self.buildingMaps[obj.object_type];
-                if current_building == Shop:
+                if current_building == CShop:
                     if(dist < 400):
                         if len(self.pizza_queue) == 0:
                             continue;
@@ -176,25 +180,41 @@ class RemoteControlCozmo:
                             self.correct_house_reached(current_building);
                         elif current_building not in self.got_this_time:
                             self.incorrect_house_reached();
-                elif current_building == Icecream:
+                elif current_building == CIcecream:
                     if dist < 400 and self.can_have_icecream and self.coins > 0:
                         self.can_have_icecream = False;
                         asyncio.ensure_future(self.icecream_reached());
-                elif current_building == Statue:
+                elif current_building == CStatue:
                     if dist < 1000 and self.can_see_statue:
                         self.can_see_statue = False;
                         asyncio.ensure_future(self.statue_reached());
-                elif current_building == Arcade:
-                    if dist < 400 and self.can_see_arcade and self.coins > 0:
+                elif current_building == CArcade:
+                    if dist < 600 and self.can_see_arcade and self.coins > 0:
                         self.can_see_arcade = False;
                         asyncio.ensure_future(self.arcade_reached());
 
             await asyncio.sleep(0.5);
 
     async def arcade_reached(self):
-        # self.is_autonomous_mode = True;
-        print ("ARCADE REACHED");
-        await asyncio.sleep(30);
+        self.coins -= 1;
+        if self.coins < 0:
+            self.coins = 0;
+        back_pack_lights = [None, None, None]
+        for i in range(0, self.coins):
+            if i % 2 == 0:
+                back_pack_lights[int(i / 2)] = Colors.GRAY
+            else:
+                back_pack_lights[int(i / 2)] = Colors.WHITE
+        self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
+
+        self.is_autonomous_mode = True;
+        await self.cozmo.drive_wheels(0, 0, 0, 0)
+
+        await self.arcadeGame.startArcadeGame();
+
+    async def arcadeGameEnd(self):
+        self.is_autonomous_mode = False;
+        await asyncio.sleep(10);
         self.can_see_arcade = True;
 
     async def statue_reached(self):
@@ -440,6 +460,9 @@ class RemoteControlCozmo:
             if queued_action(action_args):
                 self.action_queue.pop(0)
 
+        if not self.can_see_arcade:
+            return;
+
         self.update_count += 1;
         if self.update_count == self.cozmo_audio_effect_interval:
             self.cozmo_audio_effect_interval = random.randint(200,1000);
@@ -490,15 +513,15 @@ class RemoteControlCozmo:
 
     def define_custom_objects(self):
 
-        self.buildingMaps[CustomObjectTypes.CustomType09] = Shop;
+        self.buildingMaps[CustomObjectTypes.CustomType09] = CShop;
         self.buildingMaps[CustomObjectTypes.CustomType02] = CColors[0];
         self.buildingMaps[CustomObjectTypes.CustomType14] = CColors[1];
         self.buildingMaps[CustomObjectTypes.CustomType16] = CColors[2];
         self.buildingMaps[CustomObjectTypes.CustomType04] = CColors[3];
         self.buildingMaps[CustomObjectTypes.CustomType15] = CColors[4];
-        self.buildingMaps[CustomObjectTypes.CustomType07] = Icecream;
-        self.buildingMaps[CustomObjectTypes.CustomType17] = Statue;
-        self.buildingMaps[CustomObjectTypes.CustomType13] = Arcade;
+        self.buildingMaps[CustomObjectTypes.CustomType07] = CIcecream;
+        self.buildingMaps[CustomObjectTypes.CustomType17] = CStatue;
+        self.buildingMaps[CustomObjectTypes.CustomType13] = CArcade;
 
         self.buildingMaps[CustomObjectTypes.CustomType03] = 'n';
         self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';

@@ -13,7 +13,7 @@ from Common.colors import Colors
 
 
 class Arcade:
-    
+
     lightColors = [Colors.RED,Colors.YELLOW,Colors.GREEN]
     intensities = {100:{'emo':'sad','color':lightColors[0]},125:{'emo':'happy','color':lightColors[1]},300:{'emo':'very_happy','color':lightColors[2]}}
     arcadeCube = None
@@ -36,63 +36,76 @@ class Arcade:
     lightFlashSpeed = 10;
     currentConfig = None;
     cubes = None
-    
-    def __init__(self, robot: cozmo.robot.Robot):
+    mainInstance = None;
+
+    def __init__(self, robot: cozmo.robot.Robot, instance):
         self.robot = robot
-        
-        try:
-            self.cubes = self.robot.world.wait_until_observe_num_objects(1, object_type = cozmo.objects.LightCube,timeout=60)
-        except asyncio.TimeoutError:
-            print("Didn't find a cube :-(")
-            return
-        finally:
-            print("Cube found!!")
-            
-        self.arcadeCube = self.cubes[0]
-        
-        self.setUpGame();
-        
-   
-    def setUpGame(self):
-        self.robot.set_lift_height(1,10,10,0.5).wait_for_completed();
+        self.mainInstance = instance;
+
+    async def startArcadeGame(self):
+       await self.robot.set_head_angle(cozmo.util.Angle(degrees=-10)).wait_for_completed();
+
+       try:
+           self.cubes = await self.robot.world.wait_until_observe_num_objects(1, object_type=cozmo.objects.LightCube,
+                                                                        timeout=60)
+       except asyncio.TimeoutError:
+           print("Didn't find a cube :-(")
+           return
+       finally:
+           print("Cube found!!")
+
+       if(len(self.cubes) > 0):
+            self.arcadeCube = self.cubes[0]
+            await self.setUpGame()
+
+    async def setUpGame(self):
+        self.robot.abort_all_actions();
+
+        await self.robot.set_lift_height(1,10,10,0.5).wait_for_completed();
 
         self.arcadeCube.set_lights(Colors.BLUE);
-        self.robot.go_to_object(self.arcadeCube,cozmo.util.distance_mm(30),in_parallel=False).wait_for_completed()
-        
-        self.robot.play_anim("anim_hiking_edgesquintgetin_01").wait_for_completed();
+
+        await self.robot.go_to_object(self.arcadeCube,cozmo.util.distance_mm(30),in_parallel=False).wait_for_completed()
+
+        await self.robot.play_anim("anim_hiking_edgesquintgetin_01").wait_for_completed();
+
         self.robot.world.add_event_handler(cozmo.objects.EvtObjectTapped, self.on_object_tapped)
         self.currentConfig = random.choice(self.tapCombos)
+
         print(self.currentConfig['speed'])
         print(self.currentConfig['duration'])
         self.liftThread = _thread.start_new_thread(self.startTapThread, ())
-        self.changeDirection()
-        
-    
-    def flashLights(self):
-        
+
+        await self.changeDirection()
+
+
+    async def flashLights(self):
+
         for i in range(0,len(self.lights)):
             self.lights[i] = None
-        
+
         self.lights[self.flashCtr%4] = random.choice(self.lightColors);
-        
+
         self.arcadeCube.set_light_corners(self.lights[0],self.lights[1],self.lights[2],self.lights[3]);
         self.flashCtr += 1
         if(self.flashCtr<self.flashTimerEnd):
-            Timer(0.05 * self.flashCtr / self.lightFlashSpeed, self.flashLights).start()
+            await asyncio.sleep(0.05 * self.flashCtr / self.lightFlashSpeed);
+            await self.flashLights();
         else:
             self.tapCtr = 0;
             self.arcadeCube.set_lights(self.intensities[self.curIntensity]["color"]);
-            self.robot.drive_straight(cozmo.util.distance_mm(-40),cozmo.util.speed_mmps(50)).wait_for_completed();
-            self.react();
-            self.endGame();
+            await self.robot.drive_straight(cozmo.util.distance_mm(-40),cozmo.util.speed_mmps(50)).wait_for_completed();
+            await self.react();
+            await self.endGame();
 
 
-    
-    def endGame(self):
+
+    async def endGame(self):
         self.robot.move_lift(-5)
-        self.robot.play_anim('anim_fistbump_getin_01').wait_for_completed();
-        self.robot.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/2).wait_for_completed();
+        await self.robot.play_anim('anim_fistbump_getin_01').wait_for_completed()
+        await self.robot.set_head_angle(cozmo.util.Angle(degrees=30)).wait_for_completed()
         self.arcadeCube.set_light_corners(None,None,None,None);
+        await self.mainInstance.arcadeGameEnd();
 
     def startTapThread(self):
         try:
@@ -101,29 +114,30 @@ class Arcade:
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self.tap())
         except Exception as e:
-            print(e) 
-               
-            
+            print(e)
+
+
     async def tap(self):
         if self.tapped is False:
             self.robot.move_lift(self.currentConfig['speed'] * self.direction)
             await self.tap();
-        
-    def changeDirection(self):
+
+    async def changeDirection(self):
         if self.tapCtr<2:
             self.direction *= -1
             self.tapCtr += 1
-            Timer(self.currentConfig['duration'], self.changeDirection).start()
-    
-    def on_object_tapped(self, event, *, obj, tap_count, tap_duration, tap_intensity, **kw):
+            await asyncio.sleep(self.currentConfig['duration']);
+            await self.changeDirection();
+
+    async def on_object_tapped(self, event, *, obj, tap_count, tap_duration, tap_intensity, **kw):
         if self.tapped is False:
             self.tapped = True;
             print(tap_intensity)
             for intensity in self.intensities.keys():
                 if tap_intensity<intensity:
                     self.curIntensity = intensity
-                    self.flashLights();
+                    await self.flashLights();
                     break
-                
-    def react(self):
-        self.robot.play_anim(random.choice(self.reactionDict[self.intensities[self.curIntensity]["emo"]]['emo'])).wait_for_completed();
+
+    async def react(self):
+        await self.robot.play_anim(random.choice(self.reactionDict[self.intensities[self.curIntensity]["emo"]]['emo'])).wait_for_completed();
