@@ -6,10 +6,19 @@
         <script src="static/dist/nipplejs.js" charset="utf-8"></script>
     </head>
     <body class="unselectable">
-        <h1 style="text-align:center; margin-left:110px;">Cozmo World</h1>
         <table>
             <tr>
-                <td width=5%></td>
+                <td width=75%>
+                    <h1 style="text-align:right; margin-left:420px; margin-right:50px;">Cozmo World</h1>
+                </td>
+                <td width=25%>
+                    <h2 id="tips" style="text-align:right; color:#006699;">Tips: 0</h2>
+                </td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+              <td width=5%></td>
                 <td style="text-align:center;" valign=top>
                     <h2>Control Movement</h2>
                 </td>
@@ -30,18 +39,18 @@
                 <td width=5%></td>
                 <td>
                     <div style="text-align:center;width:100%;">
-                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
-                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
+                      <button id="up" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
+                      <button id="left" class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
-                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
+                      <button id="right" class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
+                      <button id="down" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
                     </div>
                 </td>
                 <td width=40%></td>
                 <td>
                     <div style="text-align:center;width:100%;">
-                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()" ></button><br><br><br><br>
-                      <button class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #4CAF50;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMove()"></button>
+                      <button id="lup" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()" ></button><br><br><br><br>
+                      <button id="ldown" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()"></button>
                     </div>
                 </td>
 
@@ -49,6 +58,8 @@
         </table>
 
         <script type="text/javascript">
+            defaultBtnColor = "#87D37C";
+            downBtnColor = "#26A65B";
             var gisControllingHead = false;
             var isRemoteMode = true;
 
@@ -67,40 +78,52 @@
             function moveup() {
                 angle = 90;
                 force = 1;
-                postHttpRequest("joystickMove", {angle,force})
+                document.getElementById("up").style.backgroundColor = downBtnColor;
+                postHttpRequest("joystickMove", {angle,force});
             }
             function movedown() {
                 angle = 270;
                 force = 1;
+                document.getElementById("down").style.backgroundColor = downBtnColor;
                 postHttpRequest("joystickMove", {angle,force})
             }
             function moveleft() {
                 angle = 180;
                 force = 1;
+                document.getElementById("left").style.backgroundColor = downBtnColor;
                 postHttpRequest("joystickMove", {angle,force})
             }
             function moveright() {
                 angle = 0;
                 force = 1;
+                document.getElementById("right").style.backgroundColor = downBtnColor;
                 postHttpRequest("joystickMove", {angle,force})
             }
             function stopMove() {
                 msg = "End";
+                document.getElementById("up").style.backgroundColor = defaultBtnColor;
+                document.getElementById("down").style.backgroundColor = defaultBtnColor;
+                document.getElementById("left").style.backgroundColor = defaultBtnColor;
+                document.getElementById("right").style.backgroundColor = defaultBtnColor;
                 postHttpRequest("joystickEnd", {msg})
             }
 
             function moveupLift() {
                 angle = 90;
                 force = 1;
+                document.getElementById("lup").style.backgroundColor = downBtnColor;
                 postHttpRequest("liftMove", {angle,force})
             }
             function movedownLift() {
                 angle = 270;
                 force = 1;
+                document.getElementById("ldown").style.backgroundColor = downBtnColor;
                 postHttpRequest("liftMove", {angle,force})
             }
             function stopMoveLift() {
                 msg = "End";
+                document.getElementById("lup").style.backgroundColor = defaultBtnColor;
+                document.getElementById("ldown").style.backgroundColor = defaultBtnColor;
                 postHttpRequest("liftEnd", {msg})
             }
 
@@ -116,10 +139,21 @@
                         }
                     }
                 }
+                if(url == "checkTips") {
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == XMLHttpRequest.DONE) {
+                            updateCoins(xhr.response);
+                        }
+                    }
+                }
                 xhr.open("POST", url, true);
                 xhr.send( JSON.stringify( dataSet ) );
             }
 
+            function updateCoins(coins) {
+                console.log(coins);
+                document.getElementById("tips").innerText = "Tips: " + coins;
+            }
             function playSpawnSound() {
                 console.log("play sound");
                 var audio = new Audio('static/sounds/ting.ogg');
@@ -137,6 +171,12 @@
                 postHttpRequest("checkPizzaSpawn", {} )
             }
             setInterval(checkPizzaSpawn , 60);
+
+            function checkTips()
+            {
+                postHttpRequest("checkTips", {} )
+            }
+            setInterval(checkTips , 60);
 
             function handleKeyActivity (e, actionType)
             {

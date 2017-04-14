@@ -55,6 +55,7 @@ CShop = "Shop"
 CIcecream = "Icecream"
 CStatue = "Statue"
 CArcade = "Arcade"
+CGarage = "Garage"
 
 TIMER_1 = 90;
 TIMER_2 = 120;
@@ -72,6 +73,8 @@ class RemoteControlCozmo:
     ting = 'anim_cozmosays_getin_short_01'
 
     arcadeGame = None;
+    autonomousInstance = None;
+
 
     buildingMaps = {}
     coins = 0
@@ -89,10 +92,15 @@ class RemoteControlCozmo:
     can_see_arcade = True
 
     is_autonomous_mode = True
+    is_auto_switch_on = False
+    is_moving = False;
+    l_wheel_speed = 0;
+    r_wheel_speed = 0;
 
     def __init__(self, coz):
         self.cozmo = coz
         self.arcadeGame = Arcade(self.cozmo, self);
+        # self.autonomousInstance = Autonomous(self.cozmo, self);
 
         self.define_custom_objects();
 
@@ -113,7 +121,7 @@ class RemoteControlCozmo:
                                "icecream", #4
                                  ]
         self.cozmo.set_lift_height(0,in_parallel=True);
-        self.cozmo.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/8,in_parallel=True)
+        self.cozmo.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/8,in_parallel=True).wait_for_completed();
 
         self.visible_objects = []
         self.measuring_dist = False;
@@ -132,7 +140,7 @@ class RemoteControlCozmo:
             if len(self.cubes) > 0:
                 self.cozmo.camera.image_stream_enabled = True;
                 self.cubes[0].set_lights_off();
-                self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True);
+                self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.on_object_appeared)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
 
@@ -190,11 +198,13 @@ class RemoteControlCozmo:
                         else:
                             anim_name = self.key_code_to_anim_name(ord('2'))
                             self.play_animation(anim_name)
-
                 elif current_building == CStatue:
                     if dist < 1000 and self.can_see_statue:
                         self.can_see_statue = False;
                         asyncio.ensure_future(self.statue_reached());
+                elif current_building == CGarage:
+                    if self.is_auto_switch_on:
+                        asyncio.ensure_future(self.start_autonomous_mode());
                 elif current_building == CArcade:
                     if dist < 600 and self.can_see_arcade:
                         if self.coins > 0:
@@ -205,6 +215,11 @@ class RemoteControlCozmo:
                             self.play_animation(anim_name)
 
             await asyncio.sleep(0.5);
+
+
+    async def start_autonomous_mode(self):
+        self.is_autonomous_mode = True;
+        # self.autonomousInstance.startAutoMode();
 
     async def arcade_reached(self):
         self.coins -= 1;
@@ -329,13 +344,18 @@ class RemoteControlCozmo:
         return math.sqrt((object_vector ** 2).sum())
 
     def joystick_end(self):
-        self.cozmo.drive_wheels(0,0,0,0)
+        self.is_moving = False;
+        self.l_wheel_speed = 0;
+        self.r_wheel_speed = 0;
+        self.cozmo.drive_wheels(self.l_wheel_speed, self.r_wheel_speed, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
 
     def joystick_move(self,angle,force):
         if self.is_autonomous_mode:
             return
 
-        forward_speed = 50 + force*30;
+        lift_height = (self.cozmo.lift_height.distance_mm - 32)/60;
+
+        forward_speed = 50 + force*30 + lift_height*40;
         turn_speed = 30;
 
         if(angle > 45 and angle < 135):
@@ -351,20 +371,23 @@ class RemoteControlCozmo:
         turn_dir = 0;
         if(direction == "up"):
             drive_dir = 1;
+            self.is_moving = True;
         elif(direction == "right"):
             turn_dir = 1;
         elif(direction == "left"):
             turn_dir = -1;
         elif(direction == "down"):
+            self.is_moving = True;
             drive_dir = -1
 
-        l_wheel_speed = (drive_dir * forward_speed) + (turn_speed * turn_dir)
-        r_wheel_speed = (drive_dir * forward_speed) - (turn_speed * turn_dir)
+        self.l_wheel_speed = (drive_dir * forward_speed) + (turn_speed * turn_dir)
+        self.r_wheel_speed = (drive_dir * forward_speed) - (turn_speed * turn_dir)
 
         if drive_dir == -1:
             self.try_play_anim(self.reverse_audio);
 
-        self.cozmo.drive_wheels(l_wheel_speed, r_wheel_speed, l_wheel_speed*4, r_wheel_speed*4)
+        self.cozmo.drive_wheels(self.l_wheel_speed, self.r_wheel_speed, self.l_wheel_speed*4, self.r_wheel_speed*4)
+
 
     def queue_action(self, new_action):
         if len(self.action_queue) > 10:
@@ -534,7 +557,13 @@ class RemoteControlCozmo:
         self.cozmo.move_head(head_vel)
 
     def modechange(self, is_autonomous):
-        self.is_autonomous_mode = is_autonomous;
+        self.is_auto_switch_on = is_autonomous;
+        if not self.is_auto_switch_on:
+            self.is_autonomous_mode = False;
+            # self.autonomousInstance.disableAuto();
+        else:
+            print("mode change to Auto");
+            # self.autonomousInstance.enableAuto();
 
     def define_custom_objects(self):
 
@@ -547,11 +576,11 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType07] = CIcecream;
         self.buildingMaps[CustomObjectTypes.CustomType11] = CStatue;
         self.buildingMaps[CustomObjectTypes.CustomType13] = CArcade;
+        self.buildingMaps[CustomObjectTypes.CustomType08] = CGarage;
 
         self.buildingMaps[CustomObjectTypes.CustomType03] = 'n';
         self.buildingMaps[CustomObjectTypes.CustomType05] = 'o';
         self.buildingMaps[CustomObjectTypes.CustomType06] = 'i';
-        self.buildingMaps[CustomObjectTypes.CustomType08] = 's';
         self.buildingMaps[CustomObjectTypes.CustomType10] = 'r';
         self.buildingMaps[CustomObjectTypes.CustomType17] = 'd';
         self.buildingMaps[CustomObjectTypes.CustomType12] = 'l';
@@ -643,6 +672,12 @@ def handle_test():
         pizzaSpawned = False;
         return "true";
     return "false"
+
+@flask_app.route('/checkTips', methods=['POST'])
+def handle_tips_check():
+    if remote_control_cozmo:
+        return str(remote_control_cozmo.coins);
+    return 0
 
 @flask_app.route('/sayText', methods=['POST'])
 def handle_sayText():

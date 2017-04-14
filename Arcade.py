@@ -64,7 +64,8 @@ class Arcade:
         try:
             await self.robot.set_head_angle(cozmo.util.Angle(degrees=-10)).wait_for_completed();
         except cozmo.exceptions.RobotBusy:
-            self.reset_head_position();
+            await asyncio.sleep(0.1);
+            await self.reset_head_position();
 
     async def setUpGame(self):
         await self.robot.set_lift_height(1,10,10,0.5).wait_for_completed();
@@ -103,8 +104,6 @@ class Arcade:
             await self.react();
             await self.endGame();
 
-
-
     async def endGame(self):
         self.robot.move_lift(-5)
         await self.robot.play_anim('anim_fistbump_getin_01').wait_for_completed()
@@ -113,10 +112,9 @@ class Arcade:
         await self.mainInstance.arcadeGameEnd();
 
     async def tap(self):
-        if self.tapped is False:
+        while self.tapped is False:
             self.robot.move_lift(self.currentConfig['speed'] * self.direction)
-            await asyncio.sleep(0.001);
-            await self.tap();
+            await asyncio.sleep(0.01);
 
     async def changeDirection(self):
         if self.tapCtr<2:
@@ -128,6 +126,7 @@ class Arcade:
     async def on_object_tapped(self, event, *, obj, tap_count, tap_duration, tap_intensity, **kw):
         if self.tapped is False:
             self.tapped = True;
+            self.robot.stop_all_motors();
             print(tap_intensity)
             for intensity in self.intensities.keys():
                 if tap_intensity<intensity:
