@@ -34,6 +34,8 @@ class Patrol:
         self.remote = remote
         self.track = Track()
         
+        self.robot = None
+
         self.stopped = False
         self.started = False
         
@@ -51,6 +53,9 @@ class Patrol:
 
         self.deliveryCount = 0
         self.attentionCount = 0
+
+        if remote:
+            remote.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.onMarkerSeen)
         
     # entrance of cozmo connection
     async def run(self, coz_conn: cozmo.conn.CozmoConnection):
@@ -69,6 +74,7 @@ class Patrol:
         if self.started or self.stopped:
             return
         self.started = True
+        self.robot = robot
         await robot.set_lift_height(1.0).wait_for_completed()
         await robot.set_head_angle(degrees(30)).wait_for_completed()
         
@@ -235,15 +241,6 @@ class Patrol:
 
                 if self.stopped:
                     break
-
-                # temporary destination to limit direction
-                nextId = self.pathPoseTrack.edge.end.id
-                
-                destId = await self.computeDestId(bldgId, robot)
-
-                if destId:
-                    # await self.findPathAndDepart(bldgId, destId, nextId, robot)
-                    pass
                 
                 await self.depart(robot)
 
@@ -349,6 +346,8 @@ class Patrol:
             self.waitForAnimation = True
             while self.waitForAnimation:
                 await asyncio.sleep(0.1)
+                if self.stopped:
+                    return
         else:
             await asyncio.sleep(5)
 
@@ -384,6 +383,7 @@ class Patrol:
         if not self.stopped:
             self.stopped = True
             self.started = False
+            self.robot.abort_all_actions()
 
     def enableAuto(self):
         if self.stopped:
