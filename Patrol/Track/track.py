@@ -44,11 +44,11 @@ class Vertex:
             return random.choice(self.outEdges)
 
     def findOutEdge(self, endId):
-        edge = next((e for e in self.outEdges if e.end.id == endId),None)
+        edge = next((e for e in self.outEdges if e.end.id == endId))
         return edge
 
     def findOutEdgeNotEndsAt(self, endId):
-        edge = next((e for e in self.outEdges if e.end.id != endId),None)
+        edge = next((e for e in self.outEdges if e.end.id != endId))
         return edge
 
 class BldgVertex(Vertex):
