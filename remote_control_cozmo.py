@@ -127,10 +127,11 @@ class RemoteControlCozmo:
             print("Didn't find a cube :-(")
             return
         finally:
+            # for cube in self.cubes:
+            #     cube.set_lights(Colors.BLUE);
             if len(self.cubes) > 0:
                 self.cozmo.camera.image_stream_enabled = True;
                 self.cubes[0].set_lights_off();
-                # self.cubes[0].set_lights(Colors.BLUE);
                 self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True);
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.on_object_appeared)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
@@ -182,17 +183,26 @@ class RemoteControlCozmo:
                         elif current_building not in self.got_this_time:
                             self.incorrect_house_reached();
                 elif current_building == CIcecream:
-                    if dist < 400 and self.can_have_icecream and self.coins > 0:
-                        self.can_have_icecream = False;
-                        asyncio.ensure_future(self.icecream_reached());
+                    if dist < 400 and self.can_have_icecream:
+                        if self.coins > 0:
+                            self.can_have_icecream = False;
+                            asyncio.ensure_future(self.icecream_reached());
+                        else:
+                            anim_name = self.key_code_to_anim_name(ord('2'))
+                            self.play_animation(anim_name)
+
                 elif current_building == CStatue:
                     if dist < 1000 and self.can_see_statue:
                         self.can_see_statue = False;
                         asyncio.ensure_future(self.statue_reached());
                 elif current_building == CArcade:
-                    if dist < 600 and self.can_see_arcade and self.coins > 0:
-                        self.can_see_arcade = False;
-                        asyncio.ensure_future(self.arcade_reached());
+                    if dist < 600 and self.can_see_arcade:
+                        if self.coins > 0:
+                            self.can_see_arcade = False;
+                            asyncio.ensure_future(self.arcade_reached());
+                        else:
+                            anim_name = self.key_code_to_anim_name(ord('2'))
+                            self.play_animation(anim_name)
 
             await asyncio.sleep(0.5);
 
@@ -217,6 +227,8 @@ class RemoteControlCozmo:
         self.is_autonomous_mode = False;
         await asyncio.sleep(10);
         self.can_see_arcade = True;
+        self.arcadeGame = None;
+        self.arcadeGame = Arcade(self.cozmo, self);
 
     async def statue_reached(self):
         try:

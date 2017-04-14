@@ -43,7 +43,9 @@ class Arcade:
         self.mainInstance = instance;
 
     async def startArcadeGame(self):
-       await self.robot.set_head_angle(cozmo.util.Angle(degrees=-10)).wait_for_completed();
+       self.robot.stop_all_motors();
+
+       await self.reset_head_position();
 
        try:
            self.cubes = await self.robot.world.wait_until_observe_num_objects(1, object_type=cozmo.objects.LightCube,
@@ -58,9 +60,13 @@ class Arcade:
             self.arcadeCube = self.cubes[0]
             await self.setUpGame()
 
-    async def setUpGame(self):
-        self.robot.abort_all_actions();
+    async def reset_head_position(self):
+        try:
+            await self.robot.set_head_angle(cozmo.util.Angle(degrees=-10)).wait_for_completed();
+        except cozmo.exceptions.RobotBusy:
+            self.reset_head_position();
 
+    async def setUpGame(self):
         await self.robot.set_lift_height(1,10,10,0.5).wait_for_completed();
 
         self.arcadeCube.set_lights(Colors.BLUE);
@@ -74,8 +80,7 @@ class Arcade:
 
         print(self.currentConfig['speed'])
         print(self.currentConfig['duration'])
-        self.liftThread = _thread.start_new_thread(self.startTapThread, ())
-
+        asyncio.ensure_future(self.tap());
         await self.changeDirection()
 
 
@@ -107,19 +112,10 @@ class Arcade:
         self.arcadeCube.set_light_corners(None,None,None,None);
         await self.mainInstance.arcadeGameEnd();
 
-    def startTapThread(self):
-        try:
-            print("Start Tap");
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.tap())
-        except Exception as e:
-            print(e)
-
-
     async def tap(self):
         if self.tapped is False:
             self.robot.move_lift(self.currentConfig['speed'] * self.direction)
+            await asyncio.sleep(0.001);
             await self.tap();
 
     async def changeDirection(self):
