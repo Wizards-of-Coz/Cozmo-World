@@ -681,6 +681,12 @@ def handle_test():
         return "true";
     return "false"
 
+@flask_app.route('/checkMode', methods=['POST'])
+def handle_mode_check():
+    if remote_control_cozmo:
+        return str(remote_control_cozmo.is_autonomous_mode);
+    return False
+
 @flask_app.route('/checkTips', methods=['POST'])
 def handle_tips_check():
     if remote_control_cozmo:

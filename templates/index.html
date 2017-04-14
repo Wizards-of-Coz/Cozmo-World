@@ -20,7 +20,7 @@
             <tr>
               <td width=5%></td>
                 <td style="text-align:center;" valign=top>
-                    <h2>Control Movement</h2>
+                    <h2 id="movementText">Control Movement</h2>
                 </td>
                 <td width=40%>
                     <div class="onoffswitch" style="margin-left:70px;">
@@ -38,7 +38,7 @@
             <tr>
                 <td width=5%></td>
                 <td>
-                    <div style="text-align:center;width:100%;">
+                    <div id="movementButtons" style="text-align:center;width:100%;">
                       <button id="up" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
                       <button id="left" class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -46,9 +46,11 @@
                       <button id="down" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
                     </div>
                 </td>
-                <td width=40%></td>
+                <td width=40%>
+                    <h2 id="autoText" style="text-align:left; margin-left: 30px; color:#000;">Cozmo Autonomous</h2>
+                </td>
                 <td>
-                    <div style="text-align:center;width:100%;">
+                    <div id="liftButtons" style="text-align:center;width:100%;">
                       <button id="lup" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()" ></button><br><br><br><br>
                       <button id="ldown" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()"></button>
                     </div>
@@ -146,8 +148,33 @@
                         }
                     }
                 }
+                if(url == "checkMode") {
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == XMLHttpRequest.DONE) {
+                            updateAutoText(xhr.responseText);
+                        }
+                    }
+                }
                 xhr.open("POST", url, true);
                 xhr.send( JSON.stringify( dataSet ) );
+            }
+
+            function updateAutoText(response) {
+                console.log(response);
+                if(response == "True") {
+                    document.getElementById("autoText").style.visibility = "visible";
+                    document.getElementById("liftButtons").style.visibility = "hidden";
+                    document.getElementById("movementButtons").style.visibility = "hidden";
+                    document.getElementById("headLiftText").style.visibility = "hidden";
+                    document.getElementById("movementText").style.visibility = "hidden";
+
+                } else {
+                    document.getElementById("autoText").style.visibility = "hidden";
+                    document.getElementById("liftButtons").style.visibility = "visible";
+                    document.getElementById("movementButtons").style.visibility = "visible";
+                    document.getElementById("headLiftText").style.visibility = "visible";
+                    document.getElementById("movementText").style.visibility = "visible";
+                }
             }
 
             function updateCoins(coins) {
@@ -171,6 +198,12 @@
                 postHttpRequest("checkPizzaSpawn", {} )
             }
             setInterval(checkPizzaSpawn , 60);
+
+            function checkMode()
+            {
+                postHttpRequest("checkMode", {} )
+            }
+            setInterval(checkMode , 60);
 
             function checkTips()
             {
