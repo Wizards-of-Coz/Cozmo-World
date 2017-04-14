@@ -1,0 +1,413 @@
+{
+	"blvd":{
+		"vertices": [
+			{
+				"id": "A",
+				"x": -148,
+				"y": 0
+			},
+			{
+				"id": "B",
+				"x": 217,
+				"y": 0
+			},
+			{
+				"id": "C",
+				"x": 877,
+				"y": 0
+			},
+			{
+				"id": "D",
+				"x": 877,
+				"y": 310
+			},
+			{
+				"id": "K",
+				"x": 1097,
+				"y": 0
+			},
+			{
+				"id": "L",
+				"x": 1097,
+				"y": 310
+			},
+			{
+				"id": "E",
+				"x": 667,
+				"y": 310
+			},
+			{
+				"id": "F",
+				"x": 667,
+				"y": 845
+			},
+			{
+				"id": "G",
+				"x": 217,
+				"y": 845
+			},
+			{
+				"id": "H",
+				"x": -148,
+				"y": 845
+			},
+			{
+				"id": "I",
+				"x": -148,
+				"y": 310
+			},
+			{
+				"id": "J",
+				"x": 217,
+				"y": 310
+			},
+			{
+				"id": "M",
+				"x": -613,
+				"y": 845
+			},
+			{
+				"id": "N",
+				"x": -613,
+				"y": 310
+			}
+		],
+		"edges": [
+			{
+				"start": "A",
+				"end": "B",
+				"oneway": false
+			},
+			{
+				"start": "B",
+				"end": "C",
+				"oneway": false
+			},
+			{
+				"start": "C",
+				"end": "D",
+				"oneway": false
+			},
+			{
+				"start": "D",
+				"end": "E",
+				"oneway": false
+			},
+			{
+				"start": "E",
+				"end": "F",
+				"oneway": false
+			},
+			{
+				"start": "F",
+				"end": "G",
+				"oneway": false
+			},
+			{
+				"start": "G",
+				"end": "H",
+				"oneway": false
+			},
+			{
+				"start": "H",
+				"end": "I",
+				"oneway": false
+			},
+			{
+				"start": "I",
+				"end": "J",
+				"oneway": false
+			},
+			{
+				"start": "E",
+				"end": "J",
+				"oneway": false
+			},
+			{
+				"start": "G",
+				"end": "J",
+				"oneway": false
+			},
+			{
+				"start": "B",
+				"end": "J",
+				"oneway": false
+			},
+			{
+				"start": "I",
+				"end": "A",
+				"oneway": false
+			},
+			{
+				"start": "M",
+				"end": "H",
+				"oneway": false
+			},
+			{
+				"start": "M",
+				"end": "N",
+				"oneway": false
+			},
+			{
+				"start": "N",
+				"end": "I",
+				"oneway": false
+			},
+			{
+				"start": "C",
+				"end": "K",
+				"oneway": false
+			},
+			{
+				"start": "K",
+				"end": "L",
+				"oneway": false
+			},
+			{
+				"start": "D",
+				"end": "L",
+				"oneway": false
+			}
+		]
+	},
+	"bldg":{
+		"vertices":[
+			{
+				"id": "GA",
+				"x": 0,
+				"y": 0,
+				"d": 40
+			},
+			{
+				"id": "RB",
+				"x": -523,
+				"y": 310,
+				"d": 70
+			},
+			{
+				"id": "GB",
+				"x": 377,
+				"y": 0,
+				"d": 50
+			},
+			{
+				"id": "BB",
+				"x": 667,
+				"y": 844,
+				"d": 70
+			},
+			{
+				"id": "PH",
+				"x": 217,
+				"y": 215,
+				"d": 220
+			},
+			{
+				"id": "YB",
+				"x": 217,
+				"y": 707,
+				"d": 40
+			},
+			{
+				"id": "MB",
+				"x": 1049,
+				"y": 0,
+				"d": 40
+			}
+		],
+		"edges": [
+			{
+				"start": "GA",
+				"end": "B",
+				"oneway": false
+			},
+			{
+				"start": "GA",
+				"end": "A",
+				"oneway": false
+			},
+			{
+				"start": "RB",
+				"end": "N",
+				"oneway": false
+			},
+			{
+				"start": "RB",
+				"end": "I",
+				"oneway": false
+			},
+			{
+				"start": "PH",
+				"end": "J",
+				"oneway": false
+			},
+			{
+				"start": "PH",
+				"end": "B",
+				"oneway": false
+			},
+			{
+				"start": "BB",
+				"end": "F",
+				"oneway": false
+			},
+			{
+				"start": "BB",
+				"end": "E",
+				"oneway": false
+			},
+			{
+				"start": "GB",
+				"end": "B",
+				"oneway": false
+			},
+			{
+				"start": "GB",
+				"end": "C",
+				"oneway": false
+			},
+			{
+				"start": "YB",
+				"end": "G",
+				"oneway": false
+			},
+			{
+				"start": "YB",
+				"end": "J",
+				"oneway": false
+			},
+			{
+				"start": "MB",
+				"end": "C",
+				"oneway": false
+			},
+			{
+				"start": "MB",
+				"end": "K",
+				"oneway": false
+			}
+		]
+	},
+	"routes":[
+		{
+			"nodes": ["GA", "B", "PH"]
+		},
+		{
+			"nodes": ["PH", "-B", "-GA"]
+		},
+		{
+			"nodes": ["RB", "I", "A", "GA"]
+		},
+		{
+			"nodes": ["GA", "-A", "I", "-RB"]
+		},
+		{
+			"nodes": ["PH", "J", "I", "-RB"]
+		},
+		{
+			"nodes": ["RB", "I", "J", "-PH"]
+		},
+		{
+			"nodes": ["PH", "-B", "GB"]
+		},
+		{
+			"nodes": ["GB", "-B", "PH"]
+		},
+		{
+			"nodes": ["PH", "J", "E", "BB"]
+		},
+		{
+			"nodes": ["BB", "F", "G", "J", "-PH"]
+		},
+		{
+			"nodes": ["GA", "B", "GB"]
+		},
+		{
+			"nodes": ["GB", "-B", "-GA"]
+		},
+		{
+			"nodes": ["GA", "B", "J", "E", "BB"]
+		},
+		{
+			"nodes": ["BB", "F", "G", "H", "I", "A", "GA"]
+		},
+		{
+			"nodes": ["RB", "I", "A", "B", "GB"]
+		},
+		{
+			"nodes": ["GB", "C", "D", "E", "J", "I", "-RB"]
+		},
+		{
+			"nodes": ["RB", "I", "J", "E", "BB"]
+		},
+		{
+			"nodes": ["BB", "F", "G", "H", "M", "N", "RB"]
+		},
+		{
+			"nodes": ["YB", "-J", "B", "-GA"]
+		},
+		{
+			"nodes": ["GA", "B", "J", "YB"]
+		},
+		{
+			"nodes": ["YB", "-J", "-PH"]
+		},
+		{
+			"nodes": ["PH", "J", "YB"]
+		},
+		{
+			"nodes": ["YB", "G", "H", "M", "N", "RB"]
+		},
+		{
+			"nodes": ["RB", "I", "J", "YB"]
+		},
+		{
+			"nodes": ["YB", "-J", "B", "GB"]
+		},
+		{
+			"nodes": ["GB", "-B", "J", "YB"]
+		},
+		{
+			"nodes": ["YB", "G", "F", "-BB"]
+		},
+		{
+			"nodes": ["BB", "F", "G", "-YB"]
+		},
+		{
+			"nodes": ["MB", "-C", "B", "-GA"]
+		},
+		{
+			"nodes": ["GA", "B", "C", "MB"]
+		},
+		{
+			"nodes": ["MB", "-C", "B", "PH"]
+		},
+		{
+			"nodes": ["PH", "-B", "C", "MB"]
+		},
+		{
+			"nodes": ["MB", "K", "L", "D", "E", "J", "I", "-RB"]
+		},
+		{
+			"nodes": ["RB", "I", "A", "B", "C", "MB"]
+		},
+		{
+			"nodes": ["MB", "-C", "-GB"]
+		},
+		{
+			"nodes": ["GB", "C", "MB"]
+		},
+		{
+			"nodes": ["MB", "K", "L", "D", "E", "BB"]
+		},
+		{
+			"nodes": ["BB", "-E", "D", "C", "MB"]
+		},
+		{
+			"nodes": ["MB", "K", "L", "D", "E", "J", "YB"]
+		},
+		{
+			"nodes": ["YB", "-J", "B", "C", "MB"]
+		}
+	]
+}
