@@ -353,9 +353,7 @@ class RemoteControlCozmo:
         if self.is_autonomous_mode:
             return
 
-        lift_height = (self.cozmo.lift_height.distance_mm - 32)/60;
-
-        forward_speed = 50 + force*30 + lift_height*40;
+        forward_speed = 50 + force*30;
         turn_speed = 30;
 
         if(angle > 45 and angle < 135):
@@ -510,6 +508,16 @@ class RemoteControlCozmo:
 
         if not self.can_see_arcade:
             return;
+
+        if self.is_moving:
+            if self.l_wheel_speed > 0:
+                self.l_wheel_speed += 1;
+                self.r_wheel_speed += 1;
+            elif self.l_wheel_speed < 0:
+                self.l_wheel_speed -= 1;
+                self.r_wheel_speed -= 1;
+
+            self.cozmo.drive_wheels(self.l_wheel_speed, self.r_wheel_speed, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
 
         self.update_count += 1;
         if self.update_count == self.cozmo_audio_effect_interval:
