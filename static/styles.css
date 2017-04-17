@@ -1,5 +1,9 @@
+@font-face {
+    font-family: Avenir;
+    src: url('fonts/AvenirLTStd-Light.otf') format('opentype');
+}
+
 button.unselectable {
-    background-color: #4CAF50; /* Green */
     border: none;
     color: white;
     padding: 12px 20px;
@@ -35,13 +39,13 @@ button.unselectable {
 }
 .onoffswitch-inner:before, .onoffswitch-inner:after {
     display: block; float: left; width: 50%; height: 36px; padding: 0; line-height: 36px;
-    font-size: 12px; color: white; font-family: Trebuchet, Arial, sans-serif; font-weight: bold;
+    font-size: 12px; color: white; font-family: Avenir; font-weight: bold;
     box-sizing: border-box;
 }
 .onoffswitch-inner:before {
     content: "Remote";
     padding-left: 27px;
-    background-color: #46A9EB; color: #FFFFFF;
+    background-color: #6BB9F0; color: #FFFFFF;
 }
 .onoffswitch-inner:after {
     content: "Autonomous";

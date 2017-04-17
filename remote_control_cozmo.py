@@ -35,6 +35,7 @@ import numpy as np
 import time
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 from Arcade import Arcade
+from Patrol.patrol import Patrol
 
 try:
     from flask import Flask, request, render_template
@@ -100,7 +101,7 @@ class RemoteControlCozmo:
     def __init__(self, coz):
         self.cozmo = coz
         self.arcadeGame = Arcade(self.cozmo, self);
-        # self.autonomousInstance = Autonomous(self.cozmo, self);
+        self.autonomousInstance = Patrol(self,self.cozmo);
 
         self.define_custom_objects();
 
@@ -121,7 +122,7 @@ class RemoteControlCozmo:
                                "icecream", #4
                                  ]
         self.cozmo.set_lift_height(0,in_parallel=True);
-        self.cozmo.set_head_angle(cozmo.robot.MAX_HEAD_ANGLE/8,in_parallel=True).wait_for_completed();
+        self.cozmo.set_head_angle(cozmo.util.Angle(degrees=-10),in_parallel=True).wait_for_completed();
 
         self.visible_objects = []
         self.measuring_dist = False;
@@ -143,7 +144,6 @@ class RemoteControlCozmo:
                 self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.on_object_appeared)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
-
             else:
                 print("Not found");
 
@@ -219,7 +219,7 @@ class RemoteControlCozmo:
 
     async def start_autonomous_mode(self):
         self.is_autonomous_mode = True;
-        # self.autonomousInstance.startAutoMode();
+        await self.autonomousInstance.start(self.cozmo);
 
     async def arcade_reached(self):
         self.coins -= 1;
@@ -568,10 +568,11 @@ class RemoteControlCozmo:
         self.is_auto_switch_on = is_autonomous;
         if not self.is_auto_switch_on:
             self.is_autonomous_mode = False;
-            # self.autonomousInstance.disableAuto();
+            self.autonomousInstance.disableAuto();
+            self.queue_action((self.reset_head_position, 30))
         else:
             print("mode change to Auto");
-            # self.autonomousInstance.enableAuto();
+            self.autonomousInstance.enableAuto();
 
     def define_custom_objects(self):
 

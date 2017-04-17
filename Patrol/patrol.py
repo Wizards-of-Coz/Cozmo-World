@@ -4,7 +4,7 @@ import asyncio
 import time
 import threading
 import random
-from Track.track import Track, BldgVertex
+from Patrol.Track.track import Track, BldgVertex
 from cozmo.util import radians, degrees, distance_mm, speed_mmps
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 from cozmo.anim import Triggers
@@ -30,11 +30,11 @@ MAX_DELIVERY = 5
 MAX_ATTENTION = 5
 
 class Patrol:
-    def __init__(self, remote=None):
+    def __init__(self, remote=None, robot=None):
         self.remote = remote
         self.track = Track()
         
-        self.robot = None
+        self.robot = robot
 
         self.stopped = False
         self.started = False
@@ -67,8 +67,6 @@ class Patrol:
         robot.world.add_event_handler(cozmo.objects.EvtObjectObserved, self.onMarkerSeen)
         
         await self.start(robot)
-
-
 
     async def start(self, robot: cozmo.robot.Robot):
         if self.started or self.stopped:
@@ -384,6 +382,7 @@ class Patrol:
             self.stopped = True
             self.started = False
             self.robot.abort_all_actions()
+            self.robot.set_head_angle(cozmo.util.Angle(degrees=30));
 
     def enableAuto(self):
         if self.stopped:

@@ -5,14 +5,15 @@
         <meta name="viewport" content="width=device-width, user-scalable=no" />
         <script src="static/dist/nipplejs.js" charset="utf-8"></script>
     </head>
-    <body class="unselectable">
+    <body class="unselectable" style="background-color: #EB9532; font-family: Avenir;">
         <table>
             <tr>
                 <td width=75%>
-                    <h1 style="text-align:right; margin-left:420px; margin-right:50px;">Cozmo World</h1>
+                    <h1 style="text-align:right; margin-left:420px; margin-right:50px; color:#FFF; opacity:0.9;">Cozmo World</h1>
                 </td>
                 <td width=25%>
-                    <h2 id="tips" style="text-align:right; color:#006699;">Tips: 0</h2>
+                    <img style="position: absolute; margin-left:150px; margin-top:0px; height:32px; width:32px;" src="static/images/coin.png">
+                    <h2 id="tips" style="text-align:right; font-size: 32px; color:#FFF;">0</h2>
                 </td>
             </tr>
         </table>
@@ -20,7 +21,7 @@
             <tr>
               <td width=5%></td>
                 <td style="text-align:center;" valign=top>
-                    <h2 id="movementText">Control Movement</h2>
+                    <h2 id="movementText" style="color:#FFF; opacity:0.9;" >Control Movement</h2>
                 </td>
                 <td width=40%>
                     <div class="onoffswitch" style="margin-left:70px;">
@@ -32,18 +33,18 @@
                     </div>
                 </td>
                 <td style="text-align:center;" valign=top>
-                    <h2 id="headLiftText">Control Lift</h2>
+                    <h2 id="headLiftText" style="color:#FFF; opacity:0.9;">Control Lift</h2>
                 </td>
             </tr>
             <tr>
                 <td width=5%></td>
                 <td>
                     <div id="movementButtons" style="text-align:center;width:100%;">
-                      <button id="up" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
-                      <button id="left" class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
+                      <button id="up" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C; border: 2px solid #26A65B;" ontouchstart="moveup()" onmousedown="moveup()" onmouseup="stopMove()" ontouchend="stopMove()"></button><br><br><br>
+                      <button id="left" class="unselectable" style="height:80px;width:150px;background: url(static/images/left.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C; border: 2px solid #26A65B;" ontouchstart="moveleft()" onmousedown="moveleft()" onmouseup="stopMove()"  ontouchend="stopMove()"></button>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                      <button id="right" class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
-                      <button id="down" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;"" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
+                      <button id="right" class="unselectable" style="height:80px;width:150px;background: url(static/images/right.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C; border: 2px solid #26A65B;" ontouchstart="moveright()" onmousedown="moveright()" onmouseup="stopMove()"  ontouchend="stopMove()"></button><br><br><br>
+                      <button id="down" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C; border: 2px solid #26A65B;" ontouchstart="movedown()" onmousedown="movedown()" onmouseup="stopMove()" ontouchend="stopMove()"></button>
                     </div>
                 </td>
                 <td width=40%>
@@ -51,8 +52,8 @@
                 </td>
                 <td>
                     <div id="liftButtons" style="text-align:center;width:100%;">
-                      <button id="lup" class="unselectable" style="height:80px;width:150px;background: url(static/images/up.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()" ></button><br><br><br><br>
-                      <button id="ldown" class="unselectable" style="height:80px;width:150px;background: url(static/images/down.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()"></button>
+                      <button id="lup" class="unselectable" style="height:80px;width:150px;background: url(static/images/liftup.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C; border: 2px solid #26A65B;" ontouchstart="moveupLift()" onmousedown="moveupLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()" ></button><br><br><br><br>
+                      <button id="ldown" class="unselectable" style="height:80px;width:150px;background: url(static/images/liftdown.png) no-repeat; background-size: 50%; background-position: center; background-color: #87D37C; border: 2px solid #26A65B;" ontouchstart="movedownLift()" onmousedown="movedownLift()" onmouseup="stopMoveLift()" ontouchend="stopMoveLift()"></button>
                     </div>
                 </td>
 
@@ -160,7 +161,6 @@
             }
 
             function updateAutoText(response) {
-                console.log(response);
                 if(response == "True") {
                     document.getElementById("autoText").style.visibility = "visible";
                     document.getElementById("liftButtons").style.visibility = "hidden";
@@ -178,11 +178,9 @@
             }
 
             function updateCoins(coins) {
-                console.log(coins);
-                document.getElementById("tips").innerText = "Tips: " + coins;
+                document.getElementById("tips").innerText = "" + coins;
             }
             function playSpawnSound() {
-                console.log("play sound");
                 var audio = new Audio('static/sounds/ting.ogg');
                 audio.play();
             }
