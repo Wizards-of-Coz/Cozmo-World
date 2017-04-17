@@ -242,7 +242,7 @@ class Patrol:
                 
                 await self.depart(robot)
 
-                print(self.pathPoseTrack.edge.end.id)
+                print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
                 
             # at any other cross or corner
             elif self.pathPoseTrack.consumeEdgeChangeSignal():
@@ -256,7 +256,7 @@ class Patrol:
                     # make a turn
                     angle = radians(angleAbs + self.initialPose.rotation.angle_z.radians - robot.pose.rotation.angle_z.radians)
                     await robot.turn_in_place(angle).wait_for_completed()
-                    print("make a turn")
+                    print("turn of angle: ", angle)
                     # restart motion
 ##                    await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
                     
@@ -264,7 +264,7 @@ class Patrol:
 
                 self.driveOnRoad = True
                 
-                print(self.pathPoseTrack.edge.end.id)
+                print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
 
             # let Cozmo drive straight for a short time before updates
             await asyncio.sleep(FRAME_DURATION)
