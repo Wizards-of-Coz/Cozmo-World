@@ -253,7 +253,7 @@ class RemoteControlCozmo:
         except cozmo.exceptions.RobotBusy:
             print("robot busy");
         try:
-            await self.cozmo.set_lift_height(1.0, in_parallel=True).wait_for_completed();
+            await self.cozmo.set_lift_height(1.0, duration=0.1, in_parallel=True).wait_for_completed();
         except cozmo.exceptions.RobotBusy:
             print("robot busy");
         try:
@@ -261,7 +261,7 @@ class RemoteControlCozmo:
         except cozmo.exceptions.RobotBusy:
             print("robot busy");
         try:
-            await self.cozmo.set_lift_height(0.0, in_parallel=True).wait_for_completed();
+            await self.cozmo.set_lift_height(0.0, duration=0.1, in_parallel=True).wait_for_completed();
         except cozmo.exceptions.RobotBusy:
             print("robot busy");
 
@@ -281,9 +281,9 @@ class RemoteControlCozmo:
             else:
                 back_pack_lights[int(i / 2)] = Colors.WHITE
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
-        await self.cozmo.say_text("Yummy").wait_for_completed();
         anim_name = self.key_code_to_anim_name(ord('4'))
         self.play_animation(anim_name)
+        self.say_text("Yummy")
 
         await asyncio.sleep(30);
         self.can_have_icecream = True;
