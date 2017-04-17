@@ -399,7 +399,8 @@ class Patrol:
             self.offsetPixel = image_box.top_left_x + image_box.width * 0.5 - 160
             print("custom marker offset in pixels: ", self.offsetPixel)
 
-    def onReactiveAnimationFinished(self):
+    async def onReactiveAnimationFinished(self):
+        print("ANIMATION FINISHED");
         self.waitForAnimation = False
 
     async def defineCustomObjects(self, world):

@@ -177,21 +177,23 @@ class RemoteControlCozmo:
                 dist = self.robots_distance_to_object(self.cozmo, obj);
                 current_building = self.buildingMaps[obj.object_type];
                 if current_building == CShop:
-                    if(dist < 400):
+                    if (dist < 500 or (self.is_autonomous_mode and dist < 1000)):
                         if len(self.pizza_queue) == 0:
                             continue;
                         for pizza in self.pizza_queue:
                             self.light_cube(pizza);
                         self.pizza_queue = []
+                        if self.autonomousInstance:
+                            await self.autonomousInstance.onReactiveAnimationFinished();
                 elif current_building in CColors:
-                    if (dist < 400):
+                    if (dist < 500 or (self.is_autonomous_mode and dist < 1000)):
                         if self.is_color_in_lights_on(current_building):
                             self.got_this_time.append(current_building);
-                            self.correct_house_reached(current_building);
+                            await self.correct_house_reached(current_building);
                         elif current_building not in self.got_this_time:
-                            self.incorrect_house_reached();
+                            await self.incorrect_house_reached();
                 elif current_building == CIcecream:
-                    if dist < 400 and self.can_have_icecream:
+                    if dist < 500 and self.can_have_icecream:
                         if self.coins > 0:
                             self.can_have_icecream = False;
                             asyncio.ensure_future(self.icecream_reached());
@@ -286,7 +288,7 @@ class RemoteControlCozmo:
         await asyncio.sleep(30);
         self.can_have_icecream = True;
 
-    def correct_house_reached(self, color):
+    async def correct_house_reached(self, color):
         l_index = self.idex_of_color_in_lights_on(color);
         index = self.currentLights.index(self.lights_on[l_index]['light']);
         self.currentLights[index] = None;
@@ -304,10 +306,24 @@ class RemoteControlCozmo:
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None);
         self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1],self.currentLights[2], self.currentLights[3]);
         self.turned_lights_on_this_time = False;
-        anim_name = self.key_code_to_anim_name(ord('3'))
-        self.play_animation(anim_name)
 
-    def incorrect_house_reached(self):
+        if self.is_autonomous_mode:
+            if self.autonomousInstance:
+                await self.play_correct_anim_autonomous();
+                await self.autonomousInstance.onReactiveAnimationFinished();
+        else:
+            anim_name = self.key_code_to_anim_name(ord('3'))
+            self.play_animation(anim_name)
+
+    async def play_correct_anim_autonomous(self):
+        try:
+            anim_name = 'anim_reacttoblock_success_01'
+            await self.cozmo.play_anim(name=anim_name).wait_for_completed();
+        except cozmo.exceptions.RobotBusy:
+            await asyncio.sleep(0.5);
+            await self.play_correct_anim_autonomous();
+
+    async def incorrect_house_reached(self):
         if self.penalised_this_time == True or len(self.lights_on)==0:
             return;
         self.penalised_this_time = True;
@@ -353,7 +369,8 @@ class RemoteControlCozmo:
         if self.is_autonomous_mode:
             return
 
-        forward_speed = 50 + force*30;
+        # forward_speed = 50 + force*30;
+        forward_speed = 50
         turn_speed = 30;
 
         if(angle > 45 and angle < 135):
@@ -438,7 +455,9 @@ class RemoteControlCozmo:
                     self.lights_on.remove(item);
                     break;
 
+        print("setting light cube corners");
         self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1],self.currentLights[2], self.currentLights[3]);
+        print(self.currentLights);
 
     def is_color_in_lights_on(self,color):
         for item in self.lights_on:
