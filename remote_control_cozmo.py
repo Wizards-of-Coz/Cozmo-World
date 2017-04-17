@@ -370,7 +370,7 @@ class RemoteControlCozmo:
             return
 
         # forward_speed = 50 + force*30;
-        forward_speed = 50
+        forward_speed = 50;
         turn_speed = 30;
 
         if(angle > 45 and angle < 135):

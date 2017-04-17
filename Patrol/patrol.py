@@ -73,6 +73,10 @@ class Patrol:
             return
         self.started = True
         self.robot = robot
+
+        self.robot.abort_all_actions();
+        self.robot.stop_all_motors();
+
         await robot.set_lift_height(1.0).wait_for_completed()
         await robot.set_head_angle(degrees(30)).wait_for_completed()
         
