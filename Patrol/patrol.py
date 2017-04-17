@@ -242,7 +242,7 @@ class Patrol:
                 
                 await self.depart(robot)
 
-                print(self.pathPoseTrack.edge.end.id)
+                print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
                 
             # at any other cross or corner
             elif self.pathPoseTrack.consumeEdgeChangeSignal():
@@ -256,7 +256,7 @@ class Patrol:
                     # make a turn
                     angle = radians(angleAbs + self.initialPose.rotation.angle_z.radians - robot.pose.rotation.angle_z.radians)
                     await robot.turn_in_place(angle).wait_for_completed()
-                    print("make a turn")
+                    print("turn of angle: ", angle.degrees)
                     # restart motion
 ##                    await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
                     
@@ -264,7 +264,7 @@ class Patrol:
 
                 self.driveOnRoad = True
                 
-                print(self.pathPoseTrack.edge.end.id)
+                print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
 
             # let Cozmo drive straight for a short time before updates
             await asyncio.sleep(FRAME_DURATION)
@@ -335,19 +335,21 @@ class Patrol:
 ##        robot.stop_all_motors()
         await robot.drive_straight(distance_mm(bldg.d), speed_mmps(FORWARD_SPEED / 2)).wait_for_completed()
         await robot.set_head_angle(degrees(30)).wait_for_completed()
+        self.waitForAnimation = True
         self.acceptOffset = True
         await robot.set_lift_height(0.0 + EPSILON).wait_for_completed()
         await asyncio.sleep(0.1)
         self.acceptOffset = False
 
+        print("Start waiting for animation")
         if self.remote:
-            self.waitForAnimation = True
             while self.waitForAnimation:
                 await asyncio.sleep(0.1)
                 if self.stopped:
                     return
         else:
             await asyncio.sleep(5)
+        print("Finish waiting for animation")
 
         await robot.set_lift_height(1.0 - EPSILON).wait_for_completed()
 
