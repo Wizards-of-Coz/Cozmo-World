@@ -256,7 +256,7 @@ class Patrol:
                     # make a turn
                     angle = radians(angleAbs + self.initialPose.rotation.angle_z.radians - robot.pose.rotation.angle_z.radians)
                     await robot.turn_in_place(angle).wait_for_completed()
-                    print("turn of angle: ", angle)
+                    print("turn of angle: ", angle.degrees)
                     # restart motion
 ##                    await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
                     
