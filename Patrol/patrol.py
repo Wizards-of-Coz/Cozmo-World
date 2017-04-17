@@ -79,6 +79,10 @@ class Patrol:
 
         await robot.set_lift_height(1.0).wait_for_completed()
         await robot.set_head_angle(degrees(30)).wait_for_completed()
+
+        # TODO: this distance is likely to be inaccurate
+        await robot.drive_straight(distance_mm(100)).wait_for_completed()
+        await robot.turn_in_place(degrees(-90))
         
         # await self.loop(robot)
         await self.loopPath(robot)
