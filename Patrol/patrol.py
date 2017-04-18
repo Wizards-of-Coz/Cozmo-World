@@ -79,7 +79,7 @@ class Patrol:
         self.robot.abort_all_actions();
         self.robot.stop_all_motors();
 
-        await robot.set_lift_height(1.0).wait_for_completed()
+        await robot.set_lift_height(0.8).wait_for_completed()
         await robot.set_head_angle(degrees(30)).wait_for_completed()
 
         # TODO: this distance is likely to be inaccurate
