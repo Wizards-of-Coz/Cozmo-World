@@ -92,6 +92,9 @@ class RemoteControlCozmo:
     can_see_statue = True
     can_see_arcade = True
 
+    dizzy_level = 4;
+    update_dizzy_count = 0;
+
     is_autonomous_mode = True
     is_auto_switch_on = False
     is_moving = False;
@@ -528,6 +531,12 @@ class RemoteControlCozmo:
         if not self.can_see_arcade:
             return;
 
+        if self.dizzy_level != 0:
+            self.update_dizzy_count += 1
+            if self.update_dizzy_count == 100:
+                self.update_dizzy_count = 0
+                self.dizzy_level = self.dizzy_level - 1
+
         if self.is_moving:
             if self.l_wheel_speed > 0:
                 self.l_wheel_speed += 1;
@@ -536,7 +545,14 @@ class RemoteControlCozmo:
                 self.l_wheel_speed -= 1;
                 self.r_wheel_speed -= 1;
 
-            self.cozmo.drive_wheels(self.l_wheel_speed, self.r_wheel_speed, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
+            lmultiplier = 0
+            rmultiplier = 0
+
+            if self.dizzy_level != 0:
+                rmultiplier = self.dizzy_level * random.randint(-50, 50);
+                lmultiplier = self.dizzy_level * random.randint(-50, 50);
+
+            self.cozmo.drive_wheels(self.l_wheel_speed+rmultiplier, self.r_wheel_speed+lmultiplier, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
 
         self.update_count += 1;
         if self.update_count == self.cozmo_audio_effect_interval:
