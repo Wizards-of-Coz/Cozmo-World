@@ -28,6 +28,7 @@ COLOR_TO_BLDG = {
 DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"color": "Yellow"},{"color": "Magenta"}]
 MAX_DELIVERY = 5
 MAX_ATTENTION = 5
+ATTENTION_TRIGGERS = ["CantHandleTallStack", "CozmoSaysBadWord", "CubeMovedUpset", "CubePounceFake", "GoToSleepGetOut"]
 
 class Patrol:
     def __init__(self, remote=None, robot=None):
@@ -229,7 +230,9 @@ class Patrol:
             #         self.findPathAndDepart(bldgId, destId, nextId)
 
             # end of the path
-            if self.pathPoseTrack.consumeRouteEndSignal():
+            if self.deliveryCount > MAX_DELIVERY:
+                await robot.play_anim_trigger(random.choice(ATTENTION_TRIGGERS)).wait_for_completed()
+            elif self.pathPoseTrack.consumeRouteEndSignal():
                 self.driveOnRoad = False
                 # stop before turn
                 robot.stop_all_motors()
@@ -332,6 +335,10 @@ class Patrol:
                 await self.backInGarage(robot, False)
             else:
                 destId = "PH"
+
+        if bldgId != "GA" and bldgId != "PH":
+            self.deliveryCount = self.deliveryCount + 1
+
         return destId
 
     async def deliverItem(self, robot: cozmo.robot.Robot, bldg: BldgVertex, destTurnRight=True):
