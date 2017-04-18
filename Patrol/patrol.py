@@ -28,6 +28,7 @@ COLOR_TO_BLDG = {
 DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"color": "Yellow"},{"color": "Magenta"}]
 MAX_DELIVERY = 5
 MAX_ATTENTION = 5
+MAX_WAITING_TIME = 15.0
 ATTENTION_TRIGGERS = ["CantHandleTallStack", "CozmoSaysBadWord", "CubeMovedUpset", "CubePounceFake", "GoToSleepGetOut"]
 
 class Patrol:
@@ -358,10 +359,14 @@ class Patrol:
 
         print("Start waiting for animation")
         if self.remote:
+            waitingTime = 0.0
             while self.waitForAnimation:
                 await asyncio.sleep(0.1)
                 if self.stopped:
                     return
+                if waitingTime > MAX_WAITING_TIME:
+                    return
+                waitingTime = waitingTime + 0.1
         else:
             await asyncio.sleep(5)
         print("Finish waiting for animation")
