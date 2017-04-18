@@ -231,7 +231,7 @@ class Patrol:
 
             # end of the path
             if self.deliveryCount > MAX_DELIVERY:
-                await robot.play_anim_trigger(random.choice(ATTENTION_TRIGGERS))
+                await robot.play_anim_trigger(random.choice(ATTENTION_TRIGGERS)).wait_for_completed()
             elif self.pathPoseTrack.consumeRouteEndSignal():
                 self.driveOnRoad = False
                 # stop before turn
