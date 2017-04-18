@@ -26,6 +26,8 @@ from Common.colors import Colors
 
 sys.path.append('lib/')
 import flask_helpers
+from playsound import playsound
+from pygame import mixer
 import _thread
 import cozmo
 import math
@@ -863,6 +865,11 @@ def run(sdk_conn):
     flask_helpers.run_flask(flask_app)
 
 if __name__ == '__main__':
+    mixer.init()
+    mixer.music.load('static/sounds/bg.ogg')
+    mixer.music.play()
+    # playsound('static/sounds/bg.mp3')
+
     cozmo.setup_basic_logging()
     cozmo.robot.Robot.drive_off_charger_on_connect = True  # RC can drive off charger if required
     try:

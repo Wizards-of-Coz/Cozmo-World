@@ -80,7 +80,7 @@ class MerryGoRound():
             await self.robot.display_oled_face_image(screen_data_2, duration_ms=200).wait_for_completed()
             await asyncio.sleep(0)
 
-        await self.robot.play_anim_trigger(cozmo.anim.Triggers.DroneModeTurboDrivingStart).wait_for_completed()
+        self.robot.play_anim_trigger(cozmo.anim.Triggers.DroneModeTurboDrivingStart)
 
         while self.robot.is_picked_up is True:
             await asyncio.sleep(0)
