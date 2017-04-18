@@ -84,7 +84,7 @@ class Patrol:
 
         # TODO: this distance is likely to be inaccurate
         await robot.drive_straight(distance_mm(140), speed_mmps(FORWARD_SPEED)).wait_for_completed()
-        await robot.turn_in_place(degrees(-90))
+        await robot.turn_in_place(degrees(-90)).wait_for_completed()
         
         # await self.loop(robot)
         await self.loopPath(robot)
