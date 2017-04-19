@@ -365,6 +365,7 @@ class Patrol:
                 if self.stopped:
                     return
                 if waitingTime > MAX_WAITING_TIME:
+                    self.deliveryCount = 999
                     return
                 waitingTime = waitingTime + 0.1
         else:
