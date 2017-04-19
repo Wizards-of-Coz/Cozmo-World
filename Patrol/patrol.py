@@ -251,8 +251,9 @@ class Patrol:
 
                 if self.stopped:
                     break
-                
-                await self.depart(robot)
+                    
+                if self.deliveryCount <= MAX_DELIVERY:
+                    await self.depart(robot)
 
                 print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
                 

@@ -42,13 +42,25 @@ class MerryGoRound():
             if self.robot.is_picked_up is True:
                 x = random.randint(1, 4)
                 if x == 1:
-                    await self.robot.play_anim_trigger(cozmo.anim.Triggers.DroneModeTurboDrivingStart).wait_for_completed()
+                    try:
+                        await self.robot.play_anim_trigger(cozmo.anim.Triggers.DroneModeTurboDrivingStart).wait_for_completed()
+                    except cozmo.exceptions.RobotBusy:
+                        print("robot busy")
                 elif x == 2:
-                    await self.robot.say_text("Faster", duration_scalar=1.2, voice_pitch=0.3).wait_for_completed()
+                    try:
+                        await self.robot.say_text("Faster", duration_scalar=1.2, voice_pitch=0.3).wait_for_completed()
+                    except cozmo.exceptions.RobotBusy:
+                        print("robot busy")
                 elif x == 3:
-                    await self.robot.play_anim_trigger(cozmo.anim.Triggers.SoundOnlyRamIntoBlock).wait_for_completed()
+                    try:
+                        await self.robot.play_anim_trigger(cozmo.anim.Triggers.SoundOnlyRamIntoBlock).wait_for_completed()
+                    except cozmo.exceptions.RobotBusy:
+                        print("robot busy")
                 elif x == 4:
-                    await self.robot.play_anim_trigger(cozmo.anim.Triggers.CubePounceWinHand).wait_for_completed()
+                    try:
+                        await self.robot.play_anim_trigger(cozmo.anim.Triggers.CubePounceWinHand).wait_for_completed()
+                    except cozmo.exceptions.RobotBusy:
+                        print("robot busy")
             await asyncio.sleep(0.1)    
 
     def end_experience(self):
