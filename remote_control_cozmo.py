@@ -216,7 +216,7 @@ class RemoteControlCozmo:
                         else:
                             anim_name = self.key_code_to_anim_name(ord('2'))
                             self.play_animation(anim_name)
-                elif current_building == CStatue:
+                elif current_building == CStatue and not self.is_autonomous_mode:
                     if dist < 600 and self.can_see_statue:
                         self.can_see_statue = False
                         asyncio.ensure_future(self.statue_reached())
