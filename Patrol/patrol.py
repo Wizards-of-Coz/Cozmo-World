@@ -272,8 +272,14 @@ class Patrol:
                     print("turn of angle: ", angle.degrees)
                     # restart motion
 ##                    await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
-                    
-                await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(FORWARD_SPEED)).wait_for_completed()
+
+                anim_done = False;
+                while anim_done is False:
+                    try:
+                        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(FORWARD_SPEED)).wait_for_completed()
+                        anim_done = True
+                    except cozmo.exceptions.RobotBusy:
+                        await asyncio.sleep(0.1);
 
                 self.driveOnRoad = True
                 
@@ -351,7 +357,14 @@ class Patrol:
 ##        await asyncio.sleep(t)
 ##        robot.stop_all_motors()
         await robot.drive_straight(distance_mm(bldg.d), speed_mmps(FORWARD_SPEED / 2)).wait_for_completed()
-        await robot.set_head_angle(degrees(30)).wait_for_completed()
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await robot.set_head_angle(degrees(30)).wait_for_completed();
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+
         self.waitForAnimation = True
         self.acceptOffset = True
         await robot.set_lift_height(0.0 + EPSILON).wait_for_completed()

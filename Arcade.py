@@ -19,7 +19,7 @@ class Arcade:
     arcadeCube = None
     robot = None
     direction = 1
-    tapCombos = [{'speed':7,'duration':0.08},{'speed':10,'duration':0.07},{'speed':5,'duration':0.09},{'speed':3,'duration':0.1},{'speed':2,'duration':0.2},{'speed':4,'duration':0.1}]
+    tapCombos = [{'speed':7,'duration':0.09},{'speed':10,'duration':0.09},{'speed':5,'duration':0.09},{'speed':3,'duration':0.1},{'speed':2,'duration':0.2},{'speed':4,'duration':0.1}]
     speed = 2
     liftThread = None
     duration = 0.1

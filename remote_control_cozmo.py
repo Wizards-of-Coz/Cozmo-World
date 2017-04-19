@@ -224,7 +224,7 @@ class RemoteControlCozmo:
                     if self.is_auto_switch_on:
                         asyncio.ensure_future(self.start_autonomous_mode())
                 elif current_building == CArcade:
-                    if dist < 600 and self.can_see_arcade:
+                    if dist < 800 and self.can_see_arcade:
                         if self.coins > 0:
                             self.can_see_arcade = False
                             asyncio.ensure_future(self.arcade_reached())
@@ -300,22 +300,37 @@ class RemoteControlCozmo:
         self.arcadeGame = Arcade(self.cozmo, self)
 
     async def statue_reached(self):
-        try:
-            await self.cozmo.play_anim(self.ting).wait_for_completed()
-        except cozmo.exceptions.RobotBusy:
-            print("robot busy")
-        try:
-            await self.cozmo.set_lift_height(1.0, duration=0.1, in_parallel=True).wait_for_completed()
-        except cozmo.exceptions.RobotBusy:
-            print("robot busy")
-        try:
-            await self.cozmo.say_text("oh, Cozmo", duration_scalar=2).wait_for_completed()
-        except cozmo.exceptions.RobotBusy:
-            print("robot busy")
-        try:
-            await self.cozmo.set_lift_height(0.0, duration=0.1, in_parallel=True).wait_for_completed()
-        except cozmo.exceptions.RobotBusy:
-            print("robot busy")
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.play_anim(self.ting).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.set_lift_height(1.0, duration=0.1, in_parallel=True).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.say_text("oh, Cozmo", duration_scalar=2).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.set_lift_height(0.0, duration=0.1, in_parallel=True).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
 
         self.queue_action((self.reset_head_position, 30))
 
