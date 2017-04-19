@@ -49,7 +49,7 @@
                 </td>
                 <td width=40%>
                     <h2 id="autoText" style="text-align:left; margin-left: 30px; color:#000;">Cozmo Autonomous</h2>
-                    <img style="margin-left: 75px; height:180px; width:150px;"  src="static/images/cozmo.png">
+                    <img id="autoImg" style="margin-left: 75px; height:180px; width:150px;"  src="static/images/cozmo.png">
                 </td>
                 <td>
                     <div id="liftButtons" style="text-align:center;width:100%;">
@@ -164,6 +164,7 @@
             function updateAutoText(response) {
                 if(response == "True") {
                     document.getElementById("autoText").style.visibility = "visible";
+                    document.getElementById("autoImg").style.visibility = "visible";
                     document.getElementById("liftButtons").style.visibility = "hidden";
                     document.getElementById("movementButtons").style.visibility = "hidden";
                     document.getElementById("headLiftText").style.visibility = "hidden";
@@ -171,6 +172,7 @@
 
                 } else {
                     document.getElementById("autoText").style.visibility = "hidden";
+                    document.getElementById("autoImg").style.visibility = "hidden";
                     document.getElementById("liftButtons").style.visibility = "visible";
                     document.getElementById("movementButtons").style.visibility = "visible";
                     document.getElementById("headLiftText").style.visibility = "visible";

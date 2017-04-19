@@ -251,7 +251,7 @@ class Patrol:
 
                 if self.stopped:
                     break
-                    
+
                 if self.deliveryCount <= MAX_DELIVERY:
                     await self.depart(robot)
 
