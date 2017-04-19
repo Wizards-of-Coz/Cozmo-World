@@ -26,7 +26,7 @@ from Common.colors import Colors
 
 sys.path.append('lib/')
 import flask_helpers
-from playsound import playsound
+from cozmo.util import distance_mm, speed_mmps
 from pygame import mixer
 import _thread
 import cozmo
@@ -135,8 +135,9 @@ class RemoteControlCozmo:
                                "icecream", #4
                                "laugh" #5
                                  ]
+
         self.cozmo.set_lift_height(0,in_parallel=True)
-        self.cozmo.set_head_angle(cozmo.util.Angle(degrees=-10),in_parallel=True).wait_for_completed()
+        self.cozmo.set_head_angle(cozmo.util.Angle(degrees=-15),in_parallel=True).wait_for_completed()
 
         self.visible_objects = []
         self.measuring_dist = False
@@ -155,6 +156,7 @@ class RemoteControlCozmo:
             if len(self.cubes) > 0:
                 self.cozmo.camera.image_stream_enabled = True
                 self.cubes[0].set_lights_off()
+                self.cozmo.drive_straight(distance_mm(10), speed_mmps(50), in_parallel=True).wait_for_completed()
                 self.cozmo.set_head_angle(cozmo.util.Angle(degrees=30),in_parallel=True)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.on_object_appeared)
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
@@ -215,7 +217,7 @@ class RemoteControlCozmo:
                             anim_name = self.key_code_to_anim_name(ord('2'))
                             self.play_animation(anim_name)
                 elif current_building == CStatue:
-                    if dist < 1000 and self.can_see_statue:
+                    if dist < 600 and self.can_see_statue:
                         self.can_see_statue = False
                         asyncio.ensure_future(self.statue_reached())
                 elif current_building == CGarage:
@@ -369,6 +371,7 @@ class RemoteControlCozmo:
         try:
             anim_name = 'anim_reacttoblock_success_01'
             await self.cozmo.play_anim(name=anim_name).wait_for_completed()
+            await self.cozmo.drive_straight(distance_mm(2), speed_mmps(50)).wait_for_completed()
         except cozmo.exceptions.RobotBusy:
             await asyncio.sleep(0.5)
             await self.play_correct_anim_autonomous()
@@ -619,30 +622,31 @@ class RemoteControlCozmo:
             self.update_count = 0
             self.try_play_anim_trigger(self.audioEffects['idle'][random.randint(0,len(self.audioEffects['idle'])-1)])
 
-        for light in self.lights_on:
-            elapsed = time.time() - light['time']
-            if elapsed > TIMER_3:
-                index = self.currentLights.index(light['light'])
-                self.currentLights[index] = None
-                for item in self.lights_on:
-                    if item['color'] == light['color']:
-                        self.lights_on.remove(item)
-                        break
-                self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
-            elif elapsed > TIMER_2:
-                if light['light'] == self.lights_1[light['color']]:
-                    continue
-                index = self.currentLights.index(light['light'])
-                light['light'] = self.lights_1[light['color']]
-                self.currentLights[index] = self.lights_1[light['color']]
-                self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
-            elif elapsed > TIMER_1:
-                if light['light'] == self.lights_2[light['color']]:
-                    continue
-                index = self.currentLights.index(light['light'])
-                light['light'] = self.lights_2[light['color']]
-                self.currentLights[index] = self.lights_2[light['color']]
-                self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
+        if not self.is_autonomous_mode:
+            for light in self.lights_on:
+                elapsed = time.time() - light['time']
+                if elapsed > TIMER_3:
+                    index = self.currentLights.index(light['light'])
+                    self.currentLights[index] = None
+                    for item in self.lights_on:
+                        if item['color'] == light['color']:
+                            self.lights_on.remove(item)
+                            break
+                    self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
+                elif elapsed > TIMER_2:
+                    if light['light'] == self.lights_1[light['color']]:
+                        continue
+                    index = self.currentLights.index(light['light'])
+                    light['light'] = self.lights_1[light['color']]
+                    self.currentLights[index] = self.lights_1[light['color']]
+                    self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
+                elif elapsed > TIMER_1:
+                    if light['light'] == self.lights_2[light['color']]:
+                        continue
+                    index = self.currentLights.index(light['light'])
+                    light['light'] = self.lights_2[light['color']]
+                    self.currentLights[index] = self.lights_2[light['color']]
+                    self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
 
 
     def update_lift(self, up_or_down):
@@ -868,7 +872,6 @@ if __name__ == '__main__':
     mixer.init()
     mixer.music.load('static/sounds/bg.ogg')
     mixer.music.play()
-    # playsound('static/sounds/bg.mp3')
 
     cozmo.setup_basic_logging()
     cozmo.robot.Robot.drive_off_charger_on_connect = True  # RC can drive off charger if required

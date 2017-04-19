@@ -26,10 +26,10 @@ COLOR_TO_BLDG = {
     "Magenta": "MB"
 }
 DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"color": "Yellow"},{"color": "Magenta"}]
-MAX_DELIVERY = 5
+MAX_DELIVERY = 1
 MAX_ATTENTION = 5
 MAX_WAITING_TIME = 15.0
-ATTENTION_TRIGGERS = ["CantHandleTallStack", "CozmoSaysBadWord", "CubeMovedUpset", "CubePounceFake", "GoToSleepGetOut"]
+ATTENTION_TRIGGERS = [cozmo.anim.Triggers.CantHandleTallStack, cozmo.anim.Triggers.CozmoSaysBadWord, cozmo.anim.Triggers.CubeMovedUpset, cozmo.anim.Triggers.CubePounceFake, cozmo.anim.Triggers.GoToSleepGetOut]
 
 class Patrol:
     def __init__(self, remote=None, robot=None):

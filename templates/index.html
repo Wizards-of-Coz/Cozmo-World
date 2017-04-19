@@ -49,6 +49,7 @@
                 </td>
                 <td width=40%>
                     <h2 id="autoText" style="text-align:left; margin-left: 30px; color:#000;">Cozmo Autonomous</h2>
+                    <img style="margin-left: 75px; height:180px; width:150px;"  src="static/images/cozmo.png">
                 </td>
                 <td>
                     <div id="liftButtons" style="text-align:center;width:100%;">
@@ -65,7 +66,7 @@
             downBtnColor = "#26A65B";
             var gisControllingHead = false;
             var isRemoteMode = true;
-
+            var currentCoins = 0
             document.addEventListener('gesturestart', function (e) {
                 e.preventDefault();
             });
@@ -179,6 +180,11 @@
 
             function updateCoins(coins) {
                 document.getElementById("tips").innerText = "" + coins;
+                if(coins != currentCoins) {
+                    currentCoins = coins;
+                    var audio = new Audio('static/sounds/coin.ogg');
+                    audio.play();
+                }
             }
             function playSpawnSound() {
                 var audio = new Audio('static/sounds/ting.ogg');
