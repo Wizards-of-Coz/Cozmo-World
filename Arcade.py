@@ -131,6 +131,8 @@ class Arcade:
             for intensity in self.intensities.keys():
                 if tap_intensity<intensity:
                     self.curIntensity = intensity
+                    # self.robot.set_head_angle(cozmo.util.Angle(degrees=20))
+                    # await self.mainInstance.clickPicture();
                     await self.flashLights();
                     break
 

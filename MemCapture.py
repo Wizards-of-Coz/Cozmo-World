@@ -68,7 +68,8 @@ class MemCapture(WOC):
         return mean_value
 
     async def start_program(self):
-        self.coz.camera.image_stream_enabled = True;
+        self.coz.camera.color_image_enabled = True
+        self.coz.camera.image_stream_enabled = True
 
         self.latest_Image = None;
 
@@ -93,10 +94,6 @@ class MemCapture(WOC):
 
     async def on_raw_cam_image(self, event, *, image, **kw):
         self.latest_Image = image;
-        resized_image = image.resize(self.face_dimensions, Image.BICUBIC)
-        resized_image = resized_image.transpose(Image.FLIP_LEFT_RIGHT)
-        pixel_threshold = await self.calc_pixel_threshold(resized_image)
-        screen_data = cozmo.oled_face.convert_image_to_screen_data(resized_image, pixel_threshold=pixel_threshold)
 
     async def clickPicture(self):
         self.image_taken = True;

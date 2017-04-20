@@ -262,6 +262,9 @@ class RemoteControlCozmo:
 
         await self.merrygoround.start_experience()
 
+    async def clickPicture(self):
+        asyncio.ensure_future(self.instagram.start_program());
+
     async def ride_started(self):
         asyncio.ensure_future(self.instagram.start_program());
         await asyncio.sleep(10);
@@ -280,8 +283,6 @@ class RemoteControlCozmo:
 
     async def memory_captured(self):
         print("MEMORY CAPTURED");
-        self.instagram = None
-        self.instagram = MemCapture(self.cozmo, self)
 
     async def arcade_reached(self):
         self.coins -= 1
