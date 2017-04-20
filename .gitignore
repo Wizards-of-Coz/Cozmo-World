@@ -88,3 +88,13 @@ ENV/
 .ropeproject
 Patrol/misc.py
 Patrol/patrolmain.py
+
+/__pycache__
+/Filters
+/VideoImages
+video.avi
+/output.jpg
+instagram.txt
+/thumbnail.jpg
+
+

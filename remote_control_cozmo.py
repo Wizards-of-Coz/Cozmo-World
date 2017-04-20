@@ -39,6 +39,7 @@ from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 from Arcade import Arcade
 from Patrol.patrol import Patrol
 from merry_go_round import MerryGoRound
+from MemCapture import MemCapture
 
 try:
     from flask import Flask, request, render_template
@@ -81,6 +82,7 @@ class RemoteControlCozmo:
     arcadeGame = None
     autonomousInstance = None
     merrygoround = None
+    instagram = None;
 
     buildingMaps = {}
     coins = 0
@@ -115,6 +117,7 @@ class RemoteControlCozmo:
         self.arcadeGame = Arcade(self.cozmo, self)
         self.autonomousInstance = Patrol(self,self.cozmo)
         self.merrygoround = MerryGoRound(self.cozmo, self)
+        self.instagram = MemCapture(self.cozmo,self);
 
         self.define_custom_objects()
 
@@ -242,7 +245,6 @@ class RemoteControlCozmo:
 
             await asyncio.sleep(0.5)
 
-
     async def ride_reached(self):
         self.coins -= 2
         if self.coins < 0:
@@ -261,6 +263,7 @@ class RemoteControlCozmo:
         await self.merrygoround.start_experience()
 
     async def ride_started(self):
+        asyncio.ensure_future(self.instagram.start_program());
         await asyncio.sleep(10);
         await self.ride_end()
 
@@ -274,6 +277,11 @@ class RemoteControlCozmo:
     async def start_autonomous_mode(self):
         self.is_autonomous_mode = True
         await self.autonomousInstance.start(self.cozmo)
+
+    async def memory_captured(self):
+        print("MEMORY CAPTURED");
+        self.instagram = None
+        self.instagram = MemCapture(self.cozmo, self)
 
     async def arcade_reached(self):
         self.coins -= 1
@@ -440,7 +448,6 @@ class RemoteControlCozmo:
         if self.checkForRideEnd is True:
             self.checkForRideEnd = False;
             self.dizzy_level = self.merrygoround.end_experience()
-            print(self.dizzy_level)
             self.queue_action((self.reset_head_position, 30))
 
 
@@ -891,6 +898,7 @@ if __name__ == '__main__':
     cozmo.setup_basic_logging()
     cozmo.robot.Robot.drive_off_charger_on_connect = True  # RC can drive off charger if required
     try:
-        cozmo.connect_with_tkviewer(run)
+        # cozmo.connect_with_tkviewer(run)
+        cozmo.connect(run)
     except cozmo.ConnectionError as e:
         sys.exit("A connection error occurred: %s" % e)
