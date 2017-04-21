@@ -45,7 +45,7 @@ button.unselectable {
 .onoffswitch-inner:before {
     content: "Remote";
     padding-left: 27px;
-    background-color: #6BB9F0; color: #FFFFFF;
+    background-color: #87D37C; color: #FFFFFF;
 }
 .onoffswitch-inner:after {
     content: "Autonomous";

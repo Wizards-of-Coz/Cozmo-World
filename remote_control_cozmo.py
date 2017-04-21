@@ -78,6 +78,7 @@ class RemoteControlCozmo:
     audioEffects = {"idle":[cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPickup,cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPickup,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceHigh,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceRoll,cozmo.anim.Triggers.SoundOnlyTurnSmall]}
     reverse_audio = 'anim_explorer_drvback_loop_01'
     ting = 'anim_cozmosays_getin_short_01'
+    pizza_gone_anim = "anim_bored_01"
 
     arcadeGame = None
     autonomousInstance = None
@@ -105,6 +106,8 @@ class RemoteControlCozmo:
 
     dizzy_level = 0
     update_dizzy_count = 0
+
+    arcade_light_done = -1;
 
     is_autonomous_mode = True
     is_auto_switch_on = False
@@ -245,6 +248,9 @@ class RemoteControlCozmo:
 
             await asyncio.sleep(0.5)
 
+    async def arcade_light_decided(self, num):
+        self.arcade_light_done = num;
+
     async def ride_reached(self):
         self.coins -= 2
         if self.coins < 0:
@@ -320,7 +326,7 @@ class RemoteControlCozmo:
         anim_done = False;
         while anim_done is False:
             try:
-                await self.cozmo.set_lift_height(1.0, duration=0.1, in_parallel=True).wait_for_completed()
+                await self.cozmo.set_lift_height(1.0, duration=0.1).wait_for_completed()
                 anim_done = True
             except cozmo.exceptions.RobotBusy:
                 await asyncio.sleep(0.1);
@@ -336,7 +342,7 @@ class RemoteControlCozmo:
         anim_done = False;
         while anim_done is False:
             try:
-                await self.cozmo.set_lift_height(0.0, duration=0.1, in_parallel=True).wait_for_completed()
+                await self.cozmo.set_lift_height(0.0, duration=0.1).wait_for_completed()
                 anim_done = True
             except cozmo.exceptions.RobotBusy:
                 await asyncio.sleep(0.1);
@@ -358,6 +364,7 @@ class RemoteControlCozmo:
                 back_pack_lights[int(i / 2)] = Colors.WHITE
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None)
         anim_name = self.key_code_to_anim_name(ord('4'))
+        self.say_text("Yummy")
         self.play_animation(anim_name)
         self.say_text("Yummy")
 
@@ -373,6 +380,9 @@ class RemoteControlCozmo:
                 self.lights_on.remove(item)
                 break
         self.coins += 1
+        if self.coins > 6:
+            self.coins = 6;
+
         back_pack_lights = [None, None, None]
         for i in range(0, self.coins):
             if i%2 == 0:
@@ -617,7 +627,7 @@ class RemoteControlCozmo:
                 self.played_laugh_anim = True
                 anim_name = self.key_code_to_anim_name(ord('5'))
                 self.play_animation(anim_name)
-            if self.update_dizzy_count == 100:
+            if self.update_dizzy_count == 200:
                 self.played_laugh_anim = False
                 self.update_dizzy_count = 0
                 self.dizzy_level = self.dizzy_level - 1
@@ -656,6 +666,8 @@ class RemoteControlCozmo:
                             self.lights_on.remove(item)
                             break
                     self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
+                    anim_name = self.pizza_gone_anim;
+                    self.play_animation(anim_name)
                 elif elapsed > TIMER_2:
                     if light['light'] == self.lights_1[light['color']]:
                         continue
@@ -814,6 +826,17 @@ def handle_tips_check():
     if remote_control_cozmo:
         return str(remote_control_cozmo.coins)
     return 0
+
+@flask_app.route('/checkArcadeOver', methods=['POST'])
+def handle_arcade_check():
+    if remote_control_cozmo:
+        if remote_control_cozmo.arcade_light_done != -1:
+            l = remote_control_cozmo.arcade_light_done;
+            remote_control_cozmo.arcade_light_done = -1;
+            return l
+        else:
+            return -1
+    return -1
 
 @flask_app.route('/sayText', methods=['POST'])
 def handle_sayText():

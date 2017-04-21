@@ -5,18 +5,11 @@
         <meta name="viewport" content="width=device-width, user-scalable=no" />
         <script src="static/dist/nipplejs.js" charset="utf-8"></script>
     </head>
-    <body class="unselectable" style="background-color: #EB9532; font-family: Avenir;">
-        <table>
-            <tr>
-                <td width=75%>
-                    <h1 style="text-align:right; margin-left:420px; margin-right:50px; color:#FFF; opacity:0.9;">Cozmo World</h1>
-                </td>
-                <td width=25%>
-                    <img style="position: absolute; margin-left:150px; margin-top:0px; height:32px; width:32px;" src="static/images/coin.png">
-                    <h2 id="tips" style="text-align:right; font-size: 32px; color:#FFF;">0</h2>
-                </td>
-            </tr>
-        </table>
+    <body class="unselectable" style="background-color: #59ABE3; font-family: Avenir;">
+        <img style="position: absolute; margin-left:400px; margin-top:0px; height:44px; width:256px;" src="static/images/cozmo_logo.png">
+        <img style="position: absolute; margin-left:850px; margin-top:2px; height:32px; width:32px;" src="static/images/coin.png">
+        <h2 id="tips" style="position: absolute; margin-left:900px ; margin-top: 0px; font-size: 32px; color:#FFF;">0</h2>
+        <br><br><br><br>
         <table>
             <tr>
               <td width=5%></td>
@@ -62,10 +55,10 @@
         </table>
 
         <script type="text/javascript">
-            defaultBtnColor = "#87D37C";
-            downBtnColor = "#26A65B";
-            var gisControllingHead = false;
-            var isRemoteMode = true;
+            defaultBtnColor = "#87D37C"
+            downBtnColor = "#26A65B"
+            var gisControllingHead = false
+            var isRemoteMode = true
             var currentCoins = 0
             document.addEventListener('gesturestart', function (e) {
                 e.preventDefault();
@@ -157,10 +150,31 @@
                         }
                     }
                 }
+                if(url == "checkArcadeOver") {
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == XMLHttpRequest.DONE) {
+                            arcadeDone(xhr.response);
+                        }
+                    }
+                }
                 xhr.open("POST", url, true);
                 xhr.send( JSON.stringify( dataSet ) );
             }
 
+            function arcadeDone(resp) {
+                if(resp == 100) {
+                    var audio = new Audio('static/sounds/red.ogg');
+                    audio.play();
+                }
+                else if(resp == 125) {
+                    var audio = new Audio('static/sounds/yellow.ogg');
+                    audio.play();
+                }
+                else if(resp == 300) {
+                    var audio = new Audio('static/sounds/green.ogg');
+                    audio.play();
+                }
+            }
             function updateAutoText(response) {
                 if(response == "True") {
                     document.getElementById("autoText").style.visibility = "visible";
@@ -182,7 +196,7 @@
 
             function updateCoins(coins) {
                 document.getElementById("tips").innerText = "" + coins;
-                if(coins != currentCoins) {
+                if(coins > currentCoins) {
                     currentCoins = coins;
                     var audio = new Audio('static/sounds/coin.ogg');
                     audio.play();
@@ -216,6 +230,12 @@
                 postHttpRequest("checkTips", {} )
             }
             setInterval(checkTips , 60);
+
+            function checkArcadeOver()
+            {
+                postHttpRequest("checkArcadeOver", {} )
+            }
+            setInterval(checkArcadeOver , 60);
 
             function handleKeyActivity (e, actionType)
             {
