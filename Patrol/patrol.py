@@ -56,6 +56,8 @@ class Patrol:
         self.deliveryCount = 0
         self.attentionCount = 0
 
+        self.mood = -1
+
         if remote:
             remote.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.onMarkerSeen)
         
@@ -387,7 +389,8 @@ class Patrol:
         print("Finish waiting for animation")
 
         bldgId = self.pathPoseTrack.edge.start.id
-        if bldgId == "PH":
+        # sad reaction before picking up cube
+        if bldgId == "PH" and self.mood < 0:
             await robot.play_anim_trigger(cozmo.anim.Triggers.FrustratedByFailureMajor).wait_for_completed()
 
         await robot.set_lift_height(1.0 - EPSILON).wait_for_completed()
