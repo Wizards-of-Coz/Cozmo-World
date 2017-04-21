@@ -388,7 +388,7 @@ class Patrol:
 
         bldgId = self.pathPoseTrack.edge.start.id
         if bldgId == "PH":
-            await robot.play_anim_trigger(cozmo.anim.Triggers.FrustratedByFailure).wait_for_completed()
+            await robot.play_anim_trigger(cozmo.anim.Triggers.FrustratedByFailureMajor).wait_for_completed()
 
         await robot.set_lift_height(1.0 - EPSILON).wait_for_completed()
 
