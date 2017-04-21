@@ -29,7 +29,7 @@ DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"col
 MAX_DELIVERY = 1
 MAX_ATTENTION = 5
 MAX_WAITING_TIME = 15.0
-ATTENTION_TRIGGERS = [cozmo.anim.Triggers.CantHandleTallStack, cozmo.anim.Triggers.CozmoSaysBadWord, cozmo.anim.Triggers.CubeMovedUpset, cozmo.anim.Triggers.CubePounceFake, cozmo.anim.Triggers.GoToSleepGetOut]
+ATTENTION_TRIGGERS = [cozmo.anim.Triggers.CantHandleTallStack, cozmo.anim.Triggers.CozmoSaysBadWord, cozmo.anim.Triggers.CubeMovedUpset, cozmo.anim.Triggers.FailedToRightFromFace, cozmo.anim.Triggers.GoToSleepGetOut]
 
 class Patrol:
     def __init__(self, remote=None, robot=None):
@@ -386,15 +386,19 @@ class Patrol:
             await asyncio.sleep(5)
         print("Finish waiting for animation")
 
+        bldgId = self.pathPoseTrack.edge.start.id
+        if bldgId == "PH":
+            await robot.play_anim_trigger(cozmo.anim.Triggers.FrustratedByFailure).wait_for_completed()
+
         await robot.set_lift_height(1.0 - EPSILON).wait_for_completed()
 
         # parameters for path finding
-        bldgId = self.pathPoseTrack.edge.start.id
         nextId = self.pathPoseTrack.edge.end.id
         destId = await self.computeDestId(bldgId, robot)
         # find path, update to pathPoseTrack
         self.findPath(bldgId, destId, nextId)
         initTurnLeft = self.pathPoseTrack.path.firstTurnLeft
+
 
         # or go to pose
 ##        await robot.drive_wheels(-FORWARD_SPEED / 2, -FORWARD_SPEED / 2)
