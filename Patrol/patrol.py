@@ -235,6 +235,7 @@ class Patrol:
             # end of the path
             if self.deliveryCount > MAX_DELIVERY:
                 await robot.play_anim_trigger(random.choice(ATTENTION_TRIGGERS)).wait_for_completed()
+                self.attentionCount = self.attentionCount + 1
             elif self.pathPoseTrack.consumeRouteEndSignal():
                 self.driveOnRoad = False
                 # stop before turn
@@ -408,11 +409,18 @@ class Patrol:
 ##        await asyncio.sleep(t)
 ##        robot.stop_all_motors()
         await robot.drive_straight(distance_mm(-bldg.d), speed_mmps(FORWARD_SPEED / 2)).wait_for_completed()
-        await robot.turn_in_place(degrees(90 * self.flagToScale(initTurnLeft))).wait_for_completed()
-        offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
-        if abs(offset) < 200:
-            self.pathPoseTrack.updateOffset(offset * self.flagToScale(initTurnLeft))
-            pass
+        
+        # delivery count not at max, drive normally
+        if self.deliveryCount <= MAX_DELIVERY:
+            await robot.turn_in_place(degrees(90 * self.flagToScale(initTurnLeft))).wait_for_completed()
+            offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
+            if abs(offset) < 200:
+                self.pathPoseTrack.updateOffset(offset * self.flagToScale(initTurnLeft))
+        # the very first attention reaction
+        elif self.attentionCount == 0:
+            await robot.turn_in_place(degrees(180)).wait_for_completed()
+        
+        
 
 
     async def backInGarage(self, robot: cozmo.robot.Robot, ccrflag: bool):
