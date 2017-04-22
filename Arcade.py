@@ -98,7 +98,7 @@ class Arcade:
             await asyncio.sleep(0.05 * self.flashCtr / self.lightFlashSpeed);
             await self.flashLights();
         else:
-            self.mainInstance.arcade_light_decided(self.curIntensity);
+            await self.mainInstance.arcade_light_decided(self.curIntensity);
             self.tapCtr = 0;
             self.arcadeCube.set_lights(self.intensities[self.curIntensity]["color"]);
             await self.robot.drive_straight(cozmo.util.distance_mm(-40),cozmo.util.speed_mmps(50)).wait_for_completed();

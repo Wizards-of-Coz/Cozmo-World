@@ -162,15 +162,16 @@
             }
 
             function arcadeDone(resp) {
-                if(resp == 100) {
+                console.log(resp);
+                if(resp == "100") {
                     var audio = new Audio('static/sounds/red.ogg');
                     audio.play();
                 }
-                else if(resp == 125) {
+                else if(resp == "125") {
                     var audio = new Audio('static/sounds/yellow.ogg');
                     audio.play();
                 }
-                else if(resp == 300) {
+                else if(resp == "300") {
                     var audio = new Audio('static/sounds/green.ogg');
                     audio.play();
                 }
