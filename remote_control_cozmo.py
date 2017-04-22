@@ -737,7 +737,7 @@ class RemoteControlCozmo:
 
             if self.fun_thing_just_done:
                 self.after_fun_thing_move_counter += 1;
-                if self.after_fun_thing_move_counter == 200:
+                if self.after_fun_thing_move_counter == 100:
                     self.fun_thing_just_done = False
                     self.after_fun_thing_move_counter = 0;
                     anim_name = self.key_code_to_anim_name(ord('6'))
