@@ -80,7 +80,7 @@ class RemoteControlCozmo:
     audioEffects = {"idle":[cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPickup,cozmo.anim.Triggers.OnboardingSoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPickup,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceHigh,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceLow,cozmo.anim.Triggers.SoundOnlyLiftEffortPlaceRoll,cozmo.anim.Triggers.SoundOnlyTurnSmall]}
     reverse_audio = 'anim_explorer_drvback_loop_01'
     ting = 'anim_cozmosays_getin_short_01'
-    pizza_gone_anim = "anim_bored_01"
+    pizza_gone_anim = "anim_fistbump_fail_01"
 
     arcadeGame = None
     autonomousInstance = None
@@ -120,6 +120,8 @@ class RemoteControlCozmo:
     fun_thing_just_done = False
     fun_thing_done_first_time = True
     after_fun_thing_move_counter = 0;
+
+    is_first_spawn = True
 
     def __init__(self, coz):
         mixer.init()
@@ -194,7 +196,14 @@ class RemoteControlCozmo:
         rndTime = random.randint(10, 20)
         await asyncio.sleep(rndTime)
 
-        rndnum = random.randint(0, 4)
+        if self.is_first_spawn:
+            if random.randint(0,1) == 0:
+                rndnum = 2
+            else:
+                rndnum = 3
+            self.is_first_spawn = False
+        else:
+            rndnum = random.randint(0, 4)
 
         if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4 and self.can_see_arcade:
             print("PIZZA SPAWNED")
@@ -280,7 +289,10 @@ class RemoteControlCozmo:
 
     async def ride_reached(self):
         if self.fun_thing_done_first_time == True:
+            self.fun_thing_done_first_time = False
             self.changeMusic();
+            self.autonomousInstance.change_mood(0);
+
         self.coins -= 2
         if self.coins < 0:
             self.coins = 0
@@ -410,15 +422,12 @@ class RemoteControlCozmo:
 
     async def getLevelOfLight(self, light):
         for key,value in self.lights.items():
-            print(value);
             if value == light:
                 return 1
         for key, value in self.lights_1.items():
-            print(value);
             if value == light:
                 return 3
         for key, value in self.lights_2.items():
-            print(value);
             if value == light:
                 return 2
         return -1;
@@ -632,7 +641,6 @@ class RemoteControlCozmo:
                     self.lights_on.remove(item)
                     break
 
-        print("setting light cube corners")
         self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1],self.currentLights[2], self.currentLights[3])
         print(self.currentLights)
 
@@ -751,7 +759,6 @@ class RemoteControlCozmo:
         if not self.is_autonomous_mode:
             for light in self.lights_on:
                 elapsed = time.time() - light['time']
-                print(elapsed);
                 if elapsed > TIMER_3:
                     index = self.currentLights.index(light['light'])
                     self.currentLights[index] = None

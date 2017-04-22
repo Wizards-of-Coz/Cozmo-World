@@ -26,7 +26,7 @@ COLOR_TO_BLDG = {
     "Magenta": "MB"
 }
 DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"color": "Yellow"},{"color": "Magenta"}]
-MAX_DELIVERY = 1
+MAX_DELIVERY = 0
 MAX_ATTENTION = 5
 MAX_WAITING_TIME = 15.0
 ATTENTION_TRIGGERS = [cozmo.anim.Triggers.CantHandleTallStack, cozmo.anim.Triggers.CozmoSaysBadWord, cozmo.anim.Triggers.CubeMovedUpset, cozmo.anim.Triggers.FailedToRightFromFace, cozmo.anim.Triggers.GoToSleepGetOut]
@@ -393,6 +393,7 @@ class Patrol:
         # sad reaction before picking up cube
         if bldgId == "PH" and self.mood < 0:
             await robot.play_anim_trigger(cozmo.anim.Triggers.FrustratedByFailureMajor).wait_for_completed()
+            await asyncio.sleep(2);
 
         await robot.set_lift_height(1.0 - EPSILON).wait_for_completed()
 
@@ -428,6 +429,9 @@ class Patrol:
         await robot.drive_wheels(-FORWARD_SPEED / 2, -FORWARD_SPEED / 2)
         await asyncio.sleep(2)
         robot.stop_all_motors()
+
+    def change_mood(self, value):
+        self.mood = value;
 
     def disableAuto(self):
         if not self.stopped:
