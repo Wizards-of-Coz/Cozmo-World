@@ -221,10 +221,10 @@ class RemoteControlCozmo:
                 dist = self.robots_distance_to_object(self.cozmo, obj)
                 current_building = self.buildingMaps[obj.object_type]
                 if current_building == CShop:
-                    if (dist < 500 or (self.is_autonomous_mode and dist < 1000)):
+                    if (dist < 600 or (self.is_autonomous_mode and dist < 1000)):
                         if len(self.pizza_queue) == 0:
                             continue
-                        if self.coins > 3:
+                        if self.coins > 2:
                             anim_name = self.key_code_to_anim_name(ord('6'))
                             self.play_animation(anim_name);
                             if random.randint(0,1) == 0:
@@ -238,14 +238,14 @@ class RemoteControlCozmo:
                         if self.autonomousInstance:
                             await self.autonomousInstance.onReactiveAnimationFinished()
                 elif current_building in CColors:
-                    if (dist < 500 or (self.is_autonomous_mode and dist < 1000)):
+                    if (dist < 600 or (self.is_autonomous_mode and dist < 1000)):
                         if self.is_color_in_lights_on(current_building):
                             self.got_this_time.append(current_building)
                             await self.correct_house_reached(current_building)
                         elif current_building not in self.got_this_time:
                             await self.incorrect_house_reached()
                 elif current_building == CIcecream:
-                    if dist < 500 and self.can_have_icecream:
+                    if dist < 600 and self.can_have_icecream:
                         if self.coins > 0:
                             self.can_have_icecream = False
                             asyncio.ensure_future(self.icecream_reached())
@@ -333,7 +333,10 @@ class RemoteControlCozmo:
 
     async def arcade_reached(self):
         if self.fun_thing_done_first_time == True:
+            self.fun_thing_done_first_time = False
             self.changeMusic();
+            self.autonomousInstance.change_mood(0);
+
         self.coins -= 1
         if self.coins < 0:
             self.coins = 0
@@ -399,7 +402,9 @@ class RemoteControlCozmo:
 
     async def icecream_reached(self):
         if self.fun_thing_done_first_time == True:
+            self.fun_thing_done_first_time = False
             self.changeMusic();
+            self.autonomousInstance.change_mood(0);
 
         self.coins -= 1
         if self.coins < 0:
@@ -443,27 +448,30 @@ class RemoteControlCozmo:
                 self.lights_on.remove(item)
                 break
 
-        add_coins = 0;
-        if level == 3:
-            anim_done = False;
-            while anim_done is False:
-                try:
-                    await self.cozmo.play_anim(self.key_code_to_anim_name(ord('7'))).wait_for_completed()
-                    anim_done = True
-                except cozmo.exceptions.RobotBusy:
-                    await asyncio.sleep(0.1);
-            add_coins = random.randint(0,1);
-        elif level == 2:
-            anim_done = False;
-            while anim_done is False:
-                try:
-                    await self.cozmo.play_anim(self.key_code_to_anim_name(ord('7'))).wait_for_completed()
-                    anim_done = True
-                except cozmo.exceptions.RobotBusy:
-                    await asyncio.sleep(0.1);
-            add_coins = 1;
+        add_coins = 0
+        if self.is_autonomous_mode:
+            add_coins = 1
         else:
-            add_coins = random.randint(1, 2);
+            if level == 3:
+                anim_done = False;
+                while anim_done is False:
+                    try:
+                        await self.cozmo.play_anim(self.key_code_to_anim_name(ord('7'))).wait_for_completed()
+                        anim_done = True
+                    except cozmo.exceptions.RobotBusy:
+                        await asyncio.sleep(0.1);
+                add_coins = random.randint(0,1);
+            elif level == 2:
+                anim_done = False;
+                while anim_done is False:
+                    try:
+                        await self.cozmo.play_anim(self.key_code_to_anim_name(ord('7'))).wait_for_completed()
+                        anim_done = True
+                    except cozmo.exceptions.RobotBusy:
+                        await asyncio.sleep(0.1);
+                add_coins = 1;
+            else:
+                add_coins = random.randint(1, 2);
 
         if add_coins == 0:
             anim_name = self.key_code_to_anim_name(ord('2'))
@@ -750,11 +758,12 @@ class RemoteControlCozmo:
 
             self.cozmo.drive_wheels(self.l_wheel_speed+rmultiplier, self.r_wheel_speed+lmultiplier, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
 
-        self.update_count += 1
-        if self.update_count == self.cozmo_audio_effect_interval:
-            self.cozmo_audio_effect_interval = random.randint(200,1000)
-            self.update_count = 0
-            self.try_play_anim_trigger(self.audioEffects['idle'][random.randint(0,len(self.audioEffects['idle'])-1)])
+        if not self.is_autonomous_mode:
+            self.update_count += 1
+            if self.update_count == self.cozmo_audio_effect_interval:
+                self.cozmo_audio_effect_interval = random.randint(200,1000)
+                self.update_count = 0
+                self.try_play_anim_trigger(self.audioEffects['idle'][random.randint(0,len(self.audioEffects['idle'])-1)])
 
         if not self.is_autonomous_mode:
             for light in self.lights_on:
@@ -808,8 +817,10 @@ class RemoteControlCozmo:
             print("mode change to Auto")
             self.autonomousInstance.enableAuto()
 
+    async def stopSadMusic(self):
+        self.soundSad.fadeout(2000)
+
     def changeMusic(self):
-        self.soundSad.fadeout(2000);
         self.soundHappy.play(loops=-1)
 
     def define_custom_objects(self):

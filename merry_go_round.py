@@ -81,7 +81,7 @@ class MerryGoRound():
         await self.robot.set_head_angle(cozmo.util.Angle(degrees=0)).wait_for_completed()
         await self.robot.play_anim_trigger(cozmo.anim.Triggers.FistBumpSuccess).wait_for_completed()
         await self.robot.play_anim_trigger(cozmo.anim.Triggers.MeetCozmoLookFaceGetOut).wait_for_completed()
-        await self.robot.say_text("Ready for the ride", use_cozmo_voice=True, voice_pitch=-1, duration_scalar=1).wait_for_completed()
+        await self.robot.say_text("Ready for the, ride", use_cozmo_voice=True, voice_pitch=-1, duration_scalar=1).wait_for_completed()
         img = Image.open("Media/belt.jpg")
         resized_img = img.resize(cozmo.oled_face.dimensions(), Image.BICUBIC)
         screen_data_1 = cozmo.oled_face.convert_image_to_screen_data(resized_img)

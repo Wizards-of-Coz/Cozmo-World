@@ -393,7 +393,7 @@ class Patrol:
         # sad reaction before picking up cube
         if bldgId == "PH" and self.mood < 0:
             await robot.play_anim_trigger(cozmo.anim.Triggers.FrustratedByFailureMajor).wait_for_completed()
-            await asyncio.sleep(2);
+            await asyncio.sleep(1);
 
         await robot.set_lift_height(1.0 - EPSILON).wait_for_completed()
 
@@ -419,11 +419,11 @@ class Patrol:
                 self.pathPoseTrack.updateOffset(offset * self.flagToScale(initTurnLeft))
         # the very first attention reaction
         elif self.attentionCount == 0:
+            await self.remote.stopSadMusic()
             await robot.turn_in_place(degrees(180)).wait_for_completed()
+            await robot.say_text("I don't want to work").wait_for_completed()
         
         
-
-
     async def backInGarage(self, robot: cozmo.robot.Robot, ccrflag: bool):
         await robot.turn_in_place(degrees(90 * self.flagToScale(ccrflag))).wait_for_completed()
         await robot.drive_wheels(-FORWARD_SPEED / 2, -FORWARD_SPEED / 2)
