@@ -81,11 +81,16 @@ class RemoteControlCozmo:
     reverse_audio = 'anim_explorer_drvback_loop_01'
     ting = 'anim_cozmosays_getin_short_01'
     pizza_gone_anim = "anim_fistbump_fail_01"
+    sugar_crash_anim = "anim_bored_02"
+    sugar_wake_anim = "anim_gotosleep_getout_04"
 
     arcadeGame = None
     autonomousInstance = None
     merrygoround = None
     instagram = None;
+
+    sugar_speed = 0
+    sugar_counter = -1
 
     buildingMaps = {}
     coins = 0
@@ -123,6 +128,8 @@ class RemoteControlCozmo:
 
     is_first_spawn = True
 
+    sad_music_stopped = False
+
     def __init__(self, coz):
         mixer.init()
         self.soundHappy = mixer.Sound('static/sounds/bg.ogg')
@@ -133,7 +140,7 @@ class RemoteControlCozmo:
         self.arcadeGame = Arcade(self.cozmo, self)
         self.autonomousInstance = Patrol(self,self.cozmo)
         self.merrygoround = MerryGoRound(self.cozmo, self)
-        self.instagram = MemCapture(self.cozmo,self);
+        # self.instagram = MemCapture(self.cozmo,self);
 
         self.define_custom_objects()
 
@@ -221,7 +228,7 @@ class RemoteControlCozmo:
                 dist = self.robots_distance_to_object(self.cozmo, obj)
                 current_building = self.buildingMaps[obj.object_type]
                 if current_building == CShop:
-                    if (dist < 600 or (self.is_autonomous_mode and dist < 1000)):
+                    if (dist < 700 or (self.is_autonomous_mode and dist < 1000)):
                         if len(self.pizza_queue) == 0:
                             continue
                         if self.coins > 2:
@@ -238,14 +245,14 @@ class RemoteControlCozmo:
                         if self.autonomousInstance:
                             await self.autonomousInstance.onReactiveAnimationFinished()
                 elif current_building in CColors:
-                    if (dist < 600 or (self.is_autonomous_mode and dist < 1000)):
+                    if (dist < 700 or (self.is_autonomous_mode and dist < 1000)):
                         if self.is_color_in_lights_on(current_building):
                             self.got_this_time.append(current_building)
                             await self.correct_house_reached(current_building)
                         elif current_building not in self.got_this_time:
                             await self.incorrect_house_reached()
                 elif current_building == CIcecream:
-                    if dist < 600 and self.can_have_icecream:
+                    if dist < 700 and self.can_have_icecream:
                         if self.coins > 0:
                             self.can_have_icecream = False
                             asyncio.ensure_future(self.icecream_reached())
@@ -255,7 +262,7 @@ class RemoteControlCozmo:
                             self.queue_action((self.reset_head_position, 30))
                             self.update()
                 elif current_building == CStatue and not self.is_autonomous_mode:
-                    if dist < 600 and self.can_see_statue:
+                    if dist < 700 and self.can_see_statue:
                         self.can_see_statue = False
                         asyncio.ensure_future(self.statue_reached())
                 elif current_building == CGarage:
@@ -272,7 +279,7 @@ class RemoteControlCozmo:
                             self.queue_action((self.reset_head_position, 30))
                             self.update()
                 elif current_building == CMerryGoRound:
-                    if dist < 600 and self.can_see_ride:
+                    if dist < 700 and self.can_see_ride:
                         if self.coins > 1:
                             self.can_see_ride = False
                             asyncio.ensure_future(self.ride_reached())
@@ -309,11 +316,11 @@ class RemoteControlCozmo:
 
         await self.merrygoround.start_experience()
 
-    async def clickPicture(self):
-        asyncio.ensure_future(self.instagram.start_program());
+    # async def clickPicture(self):
+        # asyncio.ensure_future(self.instagram.start_program());
 
     async def ride_started(self):
-        asyncio.ensure_future(self.instagram.start_program());
+        # asyncio.ensure_future(self.instagram.start_program());
         await asyncio.sleep(10);
         await self.ride_end()
 
@@ -417,10 +424,10 @@ class RemoteControlCozmo:
                 back_pack_lights[int(i / 2)] = Colors.WHITE
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None)
         anim_name = self.key_code_to_anim_name(ord('4'))
+        self.sugar_counter = 300
         self.say_text("Yummy")
         self.play_animation(anim_name)
-        self.say_text("Yummy")
-        self.fun_thing_just_done = True
+        self.say_text("Sugar rush")
 
         await asyncio.sleep(30)
         self.can_have_icecream = True
@@ -558,8 +565,9 @@ class RemoteControlCozmo:
             return
 
         if self.checkForRideEnd is True:
-            self.checkForRideEnd = False;
+            self.checkForRideEnd = False
             self.dizzy_level = self.merrygoround.end_experience()
+            # self.say_text("I am so dizzy")
             self.queue_action((self.reset_head_position, 30))
 
 
@@ -733,12 +741,30 @@ class RemoteControlCozmo:
                 self.dizzy_level = self.dizzy_level - 1
 
         if self.is_moving:
+            if self.sugar_counter > 0:
+                if self.sugar_counter == 100:
+                    self.sugar_counter -= 1
+                    anim_name = self.sugar_crash_anim
+                    self.play_animation(anim_name)
+                elif self.sugar_counter < 100:
+                    self.sugar_speed = -40
+                else:
+                    self.sugar_speed = 1000
+                self.sugar_counter -= 1
+            elif self.sugar_counter == 0:
+                self.sugar_counter = -1
+                anim_name = self.sugar_wake_anim
+                self.play_animation(anim_name)
+
+            sugarmultiplier = 0;
             if self.l_wheel_speed > 0:
                 self.l_wheel_speed += 1
                 self.r_wheel_speed += 1
+                sugarmultiplier = self.sugar_speed
             elif self.l_wheel_speed < 0:
                 self.l_wheel_speed -= 1
                 self.r_wheel_speed -= 1
+                sugarmultiplier = -self.sugar_speed
 
             lmultiplier = 0
             rmultiplier = 0
@@ -756,7 +782,7 @@ class RemoteControlCozmo:
                 rmultiplier = self.dizzy_level * random.randint(-50, 50)
                 lmultiplier = self.dizzy_level * random.randint(-50, 50)
 
-            self.cozmo.drive_wheels(self.l_wheel_speed+rmultiplier, self.r_wheel_speed+lmultiplier, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
+            self.cozmo.drive_wheels(self.l_wheel_speed+rmultiplier+sugarmultiplier, self.r_wheel_speed+lmultiplier+sugarmultiplier, self.l_wheel_speed * 4, self.r_wheel_speed * 4)
 
         if not self.is_autonomous_mode:
             self.update_count += 1
@@ -777,7 +803,9 @@ class RemoteControlCozmo:
                             break
                     self.cubes[0].set_light_corners(self.currentLights[0], self.currentLights[1], self.currentLights[2], self.currentLights[3])
                     anim_name = self.pizza_gone_anim;
-                    self.play_animation(anim_name)
+                    self.try_play_anim(anim_name)
+                    self.queue_action((self.reset_head_position, 30))
+                    self.update();
                 elif elapsed > TIMER_2:
                     if light['light'] == self.lights_1[light['color']]:
                         continue
@@ -818,9 +846,14 @@ class RemoteControlCozmo:
             self.autonomousInstance.enableAuto()
 
     async def stopSadMusic(self):
+        self.sad_music_stopped = True
         self.soundSad.fadeout(2000)
 
     def changeMusic(self):
+        if self.sad_music_stopped == False:
+            self.sad_music_stopped = True
+            self.soundSad.fadeout(2000)
+
         self.soundHappy.play(loops=-1)
 
     def define_custom_objects(self):

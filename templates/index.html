@@ -202,6 +202,11 @@
                     var audio = new Audio('static/sounds/coin.ogg');
                     audio.play();
                 }
+                else if(coins < currentCoins) {
+                    currentCoins = coins;
+                    var audio = new Audio('static/sounds/coinuse.ogg');
+                    audio.play();
+                }
             }
             function playSpawnSound() {
                 var audio = new Audio('static/sounds/ting.ogg');
