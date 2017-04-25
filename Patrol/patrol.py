@@ -11,6 +11,7 @@ from cozmo.anim import Triggers
 
 FRAME_DURATION = 0.08
 FORWARD_SPEED = 50
+FORWARD_SPEED_HAPPY = 100
 INNER_SPEED = 10
 SEARCH_TURNING_SPEED = 30
 TURN_TIME = 1.0
@@ -27,6 +28,7 @@ COLOR_TO_BLDG = {
 }
 DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"color": "Yellow"},{"color": "Magenta"}]
 MAX_DELIVERY = 0
+MAX_DELIVERY_HAPPY = 5
 MAX_ATTENTION = 5
 MAX_WAITING_TIME = 15.0
 ATTENTION_TRIGGERS = [cozmo.anim.Triggers.CantHandleTallStack, cozmo.anim.Triggers.CozmoSaysBadWord, cozmo.anim.Triggers.CubeMovedUpset, cozmo.anim.Triggers.FailedToRightFromFace, cozmo.anim.Triggers.GoToSleepGetOut]
@@ -57,6 +59,8 @@ class Patrol:
         self.attentionCount = 0
 
         self.mood = -1
+        self.forwardSpeed = FORWARD_SPEED
+        self.maxDelivery = MAX_DELIVERY
 
         if remote:
             remote.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.onMarkerSeen)
@@ -78,6 +82,10 @@ class Patrol:
         self.started = True
         self.robot = robot
 
+        if self.mood >= 0:
+            self.forwardSpeed = FORWARD_SPEED_HAPPY
+            self.maxDelivery = MAX_DELIVERY_HAPPY
+
         self.robot.abort_all_actions();
         self.robot.stop_all_motors();
 
@@ -85,7 +93,7 @@ class Patrol:
         await robot.set_head_angle(degrees(30)).wait_for_completed()
 
         # TODO: this distance is likely to be inaccurate
-        await robot.drive_straight(distance_mm(140), speed_mmps(FORWARD_SPEED)).wait_for_completed()
+        await robot.drive_straight(distance_mm(140), speed_mmps(self.forwardSpeed)).wait_for_completed()
         await robot.turn_in_place(degrees(-90)).wait_for_completed()
         
         # await self.loop(robot)
@@ -128,18 +136,18 @@ class Patrol:
         # turn back
         await robot.go_to_pose(pose).wait_for_completed()
         # resume moving
-        await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
+        await robot.drive_wheels(self.forwardSpeed, self.forwardSpeed)
 
     async def loop(self, robot: cozmo.robot.Robot):
         if robot.is_on_charger:
             await robot.drive_off_charger_contacts().wait_for_completed()
 
         self.initialPose = robot.pose
-        self.poseTrack = self.track.getPoseTrack(FORWARD_SPEED)
+        self.poseTrack = self.track.getPoseTrack(self.forwardSpeed)
         self.driveOnRoad = True
         self.stopped = False
 
-        await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
+        await robot.drive_wheels(self.forwardSpeed, self.forwardSpeed)
         print(self.poseTrack.edge.end.id)
         
         while not self.stopped:
@@ -147,7 +155,7 @@ class Patrol:
             # basic update of straight drive
             # picking next edge if the current is finished
             if self.driveOnRoad:
-                self.poseTrack.update(FRAME_DURATION, FORWARD_SPEED)
+                self.poseTrack.update(FRAME_DURATION, self.forwardSpeed)
 
             # back to starting point
             if self.poseTrack.consumeRouteEndSignal():
@@ -155,7 +163,7 @@ class Patrol:
                 # stop before turn
                 robot.stop_all_motors()
                 await robot.go_to_pose(self.initialPose).wait_for_completed()
-                await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
+                await robot.drive_wheels(self.forwardSpeed, self.forwardSpeed)
                 # turning is included in go to pose
                 self.poseTrack.consumeEdgeChangeSignal()
                 self.driveOnRoad = True
@@ -176,7 +184,7 @@ class Patrol:
                     await robot.turn_in_place(angle).wait_for_completed()
                     print("make a turn")
                     # restart motion
-                    await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
+                    await robot.drive_wheels(self.forwardSpeed, self.forwardSpeed)
                 self.driveOnRoad = True
                 
                 print(self.poseTrack.edge.end.id)
@@ -191,7 +199,7 @@ class Patrol:
             await robot.drive_off_charger_contacts().wait_for_completed()
 
         self.initialPose = robot.pose
-        self.pathPoseTrack = self.track.getPathPoseTrack(FORWARD_SPEED)
+        self.pathPoseTrack = self.track.getPathPoseTrack(self.forwardSpeed)
         self.driveOnRoad = True
         self.stopped = False
 
@@ -206,7 +214,7 @@ class Patrol:
         print("start drive")
 ##        await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
         print(self.pathPoseTrack.distance)
-        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(FORWARD_SPEED)).wait_for_completed()
+        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(self.forwardSpeed)).wait_for_completed()
         print(self.pathPoseTrack.edge.end.id)
         
         while not self.stopped:
@@ -216,7 +224,7 @@ class Patrol:
             if self.driveOnRoad:
 ##                self.pathPoseTrack.update(FRAME_DURATION, FORWARD_SPEED)
                 # finish this path, because drive_straight is used and waited to finish
-                self.pathPoseTrack.update(999, FORWARD_SPEED)
+                self.pathPoseTrack.update(999, self.forwardSpeed)
                 
             # This block will not happen
             # elif self.waitForOrder:
@@ -233,7 +241,7 @@ class Patrol:
             #         self.findPathAndDepart(bldgId, destId, nextId)
 
             # end of the path
-            if self.deliveryCount > MAX_DELIVERY:
+            if self.deliveryCount > self.maxDelivery:
                 await robot.play_anim_trigger(random.choice(ATTENTION_TRIGGERS)).wait_for_completed()
                 self.attentionCount = self.attentionCount + 1
             elif self.pathPoseTrack.consumeRouteEndSignal():
@@ -255,7 +263,7 @@ class Patrol:
                 if self.stopped:
                     break
 
-                if self.deliveryCount <= MAX_DELIVERY:
+                if self.deliveryCount <= self.maxDelivery:
                     await self.depart(robot)
 
                 print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
@@ -279,7 +287,7 @@ class Patrol:
                 anim_done = False;
                 while anim_done is False:
                     try:
-                        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(FORWARD_SPEED)).wait_for_completed()
+                        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(self.forwardSpeed)).wait_for_completed()
                         anim_done = True
                     except cozmo.exceptions.RobotBusy:
                         await asyncio.sleep(0.1);
@@ -296,23 +304,23 @@ class Patrol:
     async def findPathAndDepart(self, startId, endId, nextId, robot: cozmo.robot.Robot):
         path = self.track.getPath(startId, endId, nextId)
         offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
-        self.pathPoseTrack.updatePath(path, FORWARD_SPEED, offset)
+        self.pathPoseTrack.updatePath(path, self.forwardSpeed, offset)
 
         # resume motion
 ##        await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
-        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(FORWARD_SPEED)).wait_for_completed()    
+        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(self.forwardSpeed)).wait_for_completed()    
         self.driveOnRoad = True
         self.waitForOrder = False
 
     async def depart(self, robot: cozmo.robot.Robot):
-        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(FORWARD_SPEED)).wait_for_completed()    
+        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(self.forwardSpeed)).wait_for_completed()    
         self.driveOnRoad = True
         self.waitForOrder = False
 
     def findPath(self, startId, endId, nextId):
         path = self.track.getPath(startId, endId, nextId)
         # offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
-        self.pathPoseTrack.updatePath(path, FORWARD_SPEED)
+        self.pathPoseTrack.updatePath(path, self.forwardSpeed)
 
     async def computeDestId(self, bldgId: str, robot: cozmo.robot.Robot):
         deliveryBag = []
@@ -359,7 +367,7 @@ class Patrol:
 ##        t = bldg.d / (FORWARD_SPEED / 2)
 ##        await asyncio.sleep(t)
 ##        robot.stop_all_motors()
-        await robot.drive_straight(distance_mm(bldg.d), speed_mmps(FORWARD_SPEED / 2)).wait_for_completed()
+        await robot.drive_straight(distance_mm(bldg.d), speed_mmps(self.forwardSpeed / 2)).wait_for_completed()
         anim_done = False;
         while anim_done is False:
             try:
@@ -409,16 +417,16 @@ class Patrol:
 ##        await robot.drive_wheels(-FORWARD_SPEED / 2, -FORWARD_SPEED / 2)
 ##        await asyncio.sleep(t)
 ##        robot.stop_all_motors()
-        await robot.drive_straight(distance_mm(-bldg.d), speed_mmps(FORWARD_SPEED / 2)).wait_for_completed()
+        await robot.drive_straight(distance_mm(-bldg.d), speed_mmps(self.forwardSpeed / 2)).wait_for_completed()
         
         # delivery count not at max, drive normally
-        if self.deliveryCount <= MAX_DELIVERY:
+        if self.deliveryCount <= self.maxDelivery:
             await robot.turn_in_place(degrees(90 * self.flagToScale(initTurnLeft))).wait_for_completed()
             offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
             if abs(offset) < 200:
                 self.pathPoseTrack.updateOffset(offset * self.flagToScale(initTurnLeft))
         # the very first attention reaction
-        elif self.attentionCount == 0:
+        elif self.attentionCount == 0 and self.mood < 0:
             await self.remote.stopSadMusic()
             await robot.turn_in_place(degrees(180)).wait_for_completed()
             await robot.say_text("I don't want to work").wait_for_completed()
@@ -426,7 +434,7 @@ class Patrol:
         
     async def backInGarage(self, robot: cozmo.robot.Robot, ccrflag: bool):
         await robot.turn_in_place(degrees(90 * self.flagToScale(ccrflag))).wait_for_completed()
-        await robot.drive_wheels(-FORWARD_SPEED / 2, -FORWARD_SPEED / 2)
+        await robot.drive_wheels(-self.forwardSpeed / 2, -self.forwardSpeed / 2)
         await asyncio.sleep(2)
         robot.stop_all_motors()
 
