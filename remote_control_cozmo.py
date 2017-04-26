@@ -93,7 +93,7 @@ class RemoteControlCozmo:
     sugar_counter = -1
 
     buildingMaps = {}
-    coins = 0
+    coins = 3
     lights_on = []
     turned_lights_on_this_time = False
     currentLights = [None,None,None,None]
@@ -190,6 +190,27 @@ class RemoteControlCozmo:
                 self.cozmo.world.add_event_handler(cozmo.objects.EvtObjectDisappeared, self.on_object_disappeared)
             else:
                 print("Not found")
+
+
+    async def burp(self):
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.say_text("burp", use_cozmo_voice=False, duration_scalar=0.6).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.say_text("oh, excuse me", duration_scalar=1.3).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+
+        anim_name = "id_poked_giggle";
+        self.play_animation(anim_name);
 
 
     def start_Pizza_Thread(self):
@@ -424,10 +445,20 @@ class RemoteControlCozmo:
                 back_pack_lights[int(i / 2)] = Colors.WHITE
         self.cozmo.set_backpack_lights(None, back_pack_lights[0], back_pack_lights[1], back_pack_lights[2], None)
         anim_name = self.key_code_to_anim_name(ord('4'))
-        self.sugar_counter = 300
         self.say_text("Yummy")
-        self.play_animation(anim_name)
-        self.say_text("Sugar rush")
+        anim_done = False;
+        while anim_done is False:
+            try:
+                await self.cozmo.play_anim(anim_name).wait_for_completed()
+                anim_done = True
+            except cozmo.exceptions.RobotBusy:
+                await asyncio.sleep(0.1);
+        if random.randint(0,10) < 4:
+            self.sugar_counter = 300
+            self.say_text("Sugar rush")
+        else:
+            await asyncio.sleep(5)
+            await self.burp()
 
         await asyncio.sleep(30)
         self.can_have_icecream = True
