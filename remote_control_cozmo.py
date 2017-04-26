@@ -93,7 +93,7 @@ class RemoteControlCozmo:
     sugar_counter = -1
 
     buildingMaps = {}
-    coins = 3
+    coins = 0
     lights_on = []
     turned_lights_on_this_time = False
     currentLights = [None,None,None,None]
