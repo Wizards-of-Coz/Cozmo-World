@@ -1,24 +1,3 @@
-#!/usr/bin/env python3
-
-# Copyright (c) 2016 Anki, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License")
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License in the file LICENSE.txt or at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-'''Control Cozmo using a webpage on your computer.
-
-This example lets you control Cozmo by Remote Control, using a webpage served by Flask.
-'''
-
 import json
 import sys
 sys.path.append('../')
@@ -38,7 +17,7 @@ import time
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 from Arcade import Arcade
 from Patrol.patrol import Patrol
-from merry_go_round import MerryGoRound
+from MerryGoRound import MerryGoRound
 from MemCapture import MemCapture
 
 try:
@@ -68,7 +47,7 @@ TIMER_2 = 120
 TIMER_3 = 150
 pizzaSpawned = False
 
-class RemoteControlCozmo:
+class CozmoWorld:
     reactionDict = {"happy":{'emo':['anim_memorymatch_solo_successgame_player_01','anim_memorymatch_successhand_cozmo_02','anim_reacttoblock_success_01','anim_fistbump_success_01']},
                     "sad":{'emo':['anim_memorymatch_failgame_cozmo_03','anim_keepaway_losegame_02','anim_reacttoblock_frustrated_01','anim_reacttoblock_frustrated_int2_01']},
                     "veryHappy": {'emo': ['anim_greeting_happy_01','anim_greeting_happy_03','anim_memorymatch_successhand_cozmo_04']},
@@ -1102,7 +1081,7 @@ def run(sdk_conn):
     robot = sdk_conn.wait_for_robot()
 
     global remote_control_cozmo
-    remote_control_cozmo = RemoteControlCozmo(robot)
+    remote_control_cozmo = CozmoWorld(robot)
 
     flask_helpers.run_flask(flask_app)
 
