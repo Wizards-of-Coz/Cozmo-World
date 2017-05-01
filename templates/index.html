@@ -127,33 +127,10 @@
             function postHttpRequest(url, dataSet)
             {
                 var xhr = new XMLHttpRequest();
-                if(url == "checkPizzaSpawn") {
+                if (url == "checkStatus") {
                     xhr.onreadystatechange = function() {
                         if (xhr.readyState == XMLHttpRequest.DONE) {
-                            if(xhr.responseText == "true") {
-                                playSpawnSound();
-                            }
-                        }
-                    }
-                }
-                if(url == "checkTips") {
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState == XMLHttpRequest.DONE) {
-                            updateCoins(xhr.response);
-                        }
-                    }
-                }
-                if(url == "checkMode") {
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState == XMLHttpRequest.DONE) {
-                            updateAutoText(xhr.responseText);
-                        }
-                    }
-                }
-                if(url == "checkArcadeOver") {
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState == XMLHttpRequest.DONE) {
-                            arcadeDone(xhr.response);
+                            parseStatus(xhr.response);
                         }
                     }
                 }
@@ -161,6 +138,17 @@
                 xhr.send( JSON.stringify( dataSet ) );
             }
 
+            function parseStatus(resp) {
+                var res = resp.split("'").join('"');
+                console.log(res);
+                var obj = JSON.parse(res);
+                if(obj["pizza"] == "true") {
+                    playSpawnSound();
+                }
+                updateAutoText(obj["mode"]);
+                updateCoins(obj["coins"]);
+                arcadeDone(obj["arcade"]);
+            }
             function arcadeDone(resp) {
                 console.log(resp);
                 if(resp == "100") {
@@ -219,29 +207,11 @@
             }
             setInterval(updateCozmo , 60);
 
-            function checkPizzaSpawn()
+            function checkStatus()
             {
-                postHttpRequest("checkPizzaSpawn", {} )
+                postHttpRequest("checkStatus",{} )
             }
-            setInterval(checkPizzaSpawn , 300);
-
-            function checkMode()
-            {
-                postHttpRequest("checkMode", {} )
-            }
-            setInterval(checkMode , 300);
-
-            function checkTips()
-            {
-                postHttpRequest("checkTips", {} )
-            }
-            setInterval(checkTips , 60);
-
-            function checkArcadeOver()
-            {
-                postHttpRequest("checkArcadeOver", {} )
-            }
-            <!--setInterval(checkArcadeOver , 60);-->
+            setInterval(checkStatus , 100);
 
             function handleKeyActivity (e, actionType)
             {

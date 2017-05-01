@@ -232,8 +232,10 @@ class RemoteControlCozmo:
             self.is_first_spawn = False
         else:
             rndnum = random.randint(0, 4)
+            while self.checkIfPizzaInQueue(rndnum) == True:
+                rndnum = random.randint(0, 4)
 
-        if rndnum not in self.pizza_queue and len(self.pizza_queue) < 4 and self.can_see_arcade:
+        if len(self.pizza_queue) < 4 and self.can_see_arcade:
             print("PIZZA SPAWNED")
             pizzaSpawned = True
             self.pizza_queue.append({'time':time.time(), 'pizza':rndnum})
@@ -242,6 +244,12 @@ class RemoteControlCozmo:
         await asyncio.sleep(rndTime)
 
         await self.pizzaSpawning()
+
+    def checkIfPizzaInQueue(self, rndnum):
+        for pizza in self.pizza_queue:
+            if (pizza['pizza'] == rndnum):
+                return True;
+        return False;
 
     async def measure_distance_visible_objects(self):
         while True:
@@ -823,6 +831,11 @@ class RemoteControlCozmo:
                 self.try_play_anim_trigger(self.audioEffects['idle'][random.randint(0,len(self.audioEffects['idle'])-1)])
 
         if not self.is_autonomous_mode:
+            for pizza in self.pizza_queue:
+                elapsed = time.time() - pizza['time']
+                if elapsed > TIMER_3:
+                    self.pizza_queue.remove(pizza);
+
             for light in self.lights_on:
                 elapsed = time.time() - light['time']
                 if elapsed > TIMER_3:
@@ -907,8 +920,6 @@ class RemoteControlCozmo:
         self.buildingMaps[CustomObjectTypes.CustomType17] = 'd'
         self.buildingMaps[CustomObjectTypes.CustomType12] = 'l'
 
-
-
         cube_obj_1 = self.cozmo.world.define_custom_cube(CustomObjectTypes.CustomType02,
                                                   CustomObjectMarkers.Diamonds2,
                                                   100,
@@ -987,36 +998,37 @@ def handle_updateCozmo():
         remote_control_cozmo.update()
     return ""
 
-@flask_app.route('/checkPizzaSpawn', methods=['POST'])
-def handle_test():
+@flask_app.route('/checkStatus', methods=['POST'])
+def handle_check_status():
+    obj = {};
     global pizzaSpawned
     if pizzaSpawned:
         pizzaSpawned = False
-        return "true"
-    return "false"
+        obj["pizza"] = "true"
+    else:
+        obj["pizza"] = "false"
 
-@flask_app.route('/checkMode', methods=['POST'])
-def handle_mode_check():
     if remote_control_cozmo:
-        return str(remote_control_cozmo.is_autonomous_mode)
-    return False
+        obj["mode"] = str(remote_control_cozmo.is_autonomous_mode)
+    else:
+        obj["mode"] = "false"
 
-@flask_app.route('/checkTips', methods=['POST'])
-def handle_tips_check():
     if remote_control_cozmo:
-        return str(remote_control_cozmo.coins)
-    return 0
+        obj["coins"] = str(remote_control_cozmo.coins)
+    else:
+        obj["coins"] = str(0)
 
-@flask_app.route('/checkArcadeOver', methods=['POST'])
-def handle_arcade_check():
     if remote_control_cozmo:
         if remote_control_cozmo.arcade_light_done != -1:
             l = remote_control_cozmo.arcade_light_done;
             remote_control_cozmo.arcade_light_done = -1;
-            return str(l)
+            obj["arcade"] = str(l)
         else:
-            return str(-1)
-    return str(-1)
+            obj["arcade"] = str(-1)
+    else:
+        obj["arcade"] = str(-1)
+
+    return str(obj);
 
 @flask_app.route('/sayText', methods=['POST'])
 def handle_sayText():
