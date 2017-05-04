@@ -9,16 +9,19 @@ from cozmo.util import radians, degrees, distance_mm, speed_mmps
 from cozmo.objects import CustomObjectMarkers, CustomObjectTypes
 from cozmo.anim import Triggers
 
+# time of updating frame
 FRAME_DURATION = 0.08
+# forward speed when Cozmo is unhappy
 FORWARD_SPEED = 50
+# forward speed when Cozmo is happy
 FORWARD_SPEED_HAPPY = 100
-INNER_SPEED = 10
-SEARCH_TURNING_SPEED = 30
-TURN_TIME = 1.0
-LOADINGDOCK_FORWARD_TIME = 6
-MAX_TIME = 100
+# small number to round the caps
 EPSILON = 0.00001
+
+# approximate scale from real world distance to pixel numbers in vision
 DISTANCE_TO_PIXEL_SCALE = 4.0
+
+# mapping from color name to building id, note some building ids are switched intentionally
 COLOR_TO_BLDG = {
     "Red": "BB",
     "Green": "GB",
@@ -27,10 +30,15 @@ COLOR_TO_BLDG = {
     "Magenta": "MB"
 }
 DELIVERY_UNIVERSE = [{"color": "Blue"},{"color": "Red"},{"color": "Green"},{"color": "Yellow"},{"color": "Magenta"}]
+# normal (unhappy) autonomous delivery, at most once
 MAX_DELIVERY = 0
+# happy autonomous delivery, up to 6 times
 MAX_DELIVERY_HAPPY = 5
-MAX_ATTENTION = 5
+
+# dropping bag reaction waiting time limit
+# usually used when Cozmo is not near a marker
 MAX_WAITING_TIME = 15.0
+# animation triggers to 
 ATTENTION_TRIGGERS = [cozmo.anim.Triggers.CantHandleTallStack, cozmo.anim.Triggers.CozmoSaysBadWord, cozmo.anim.Triggers.CubeMovedUpset, cozmo.anim.Triggers.FailedToRightFromFace, cozmo.anim.Triggers.GoToSleepGetOut]
 
 class Patrol:
@@ -40,24 +48,36 @@ class Patrol:
         
         self.robot = robot
 
+        # these two varaibles are not exact opposite
+        # stopped: volatile variable, actually means whether autonomous is disabled
         self.stopped = False
+        # started: whether autonomous motion is started, blocking duplicating calls of start()
         self.started = False
         
+        # pose track, about the map data structure
         self.poseTrack = None
+        # starting pose, about the real world
         self.initialPose = None
         
         # whether Cozmo is driving along the road, not turn to buildings on sides
         self.driveOnRoad = True
         
+        # not used
         self.waitForOrder = False
         
+        # wait for animation after dropping the bag
         self.waitForAnimation = False
+
+        # distance fix parallel to the main road, depends on the vision
         self.offsetPixel = 0.0
+        # whether offset updating is accepted, ignoring markers in vision in cirtain cases
         self.acceptOffset = False
 
+        # variable related to self termination
         self.deliveryCount = 0
         self.attentionCount = 0
 
+        # Cozmo's mood scale and mood related variables
         self.mood = -1
         self.forwardSpeed = FORWARD_SPEED
         self.maxDelivery = MAX_DELIVERY
@@ -65,7 +85,7 @@ class Patrol:
         if remote:
             remote.cozmo.world.add_event_handler(cozmo.objects.EvtObjectAppeared, self.onMarkerSeen)
         
-    # entrance of cozmo connection
+    # entrance of cozmo connection if directly run in main function
     async def run(self, coz_conn: cozmo.conn.CozmoConnection):
         robot = await coz_conn.wait_for_robot()
 
@@ -76,12 +96,14 @@ class Patrol:
         
         await self.start(robot)
 
+    # start autonomous
     async def start(self, robot: cozmo.robot.Robot):
         if self.started or self.stopped:
             return
         self.started = True
         self.robot = robot
 
+        # set mood dependent variables
         if self.mood >= 0:
             self.forwardSpeed = FORWARD_SPEED_HAPPY
             self.maxDelivery = MAX_DELIVERY_HAPPY
@@ -89,9 +111,11 @@ class Patrol:
         self.robot.abort_all_actions();
         self.robot.stop_all_motors();
 
+        # lift height not be 1, because the height of garage gate
         await robot.set_lift_height(0.8).wait_for_completed()
         await robot.set_head_angle(degrees(30)).wait_for_completed()
 
+        # move out of garage home and turn to the road
         # TODO: this distance is likely to be inaccurate
         await robot.drive_straight(distance_mm(140), speed_mmps(self.forwardSpeed)).wait_for_completed()
         await robot.turn_in_place(degrees(-90)).wait_for_completed()
@@ -100,7 +124,7 @@ class Patrol:
         await self.loopPath(robot)
         # await self.searchForCustomObject(robot)
 
-
+    # turn around and search for any custom object
     async def searchForCustomObject(self, robot: cozmo.robot.Robot):
         lookAround = robot.start_behavior(cozmo.behavior.BehaviorTypes.LookAroundInPlace)
 
@@ -118,6 +142,7 @@ class Patrol:
             pass
             #await robot.go_to_object(obj)
     
+    # 
     async def waitForObservedCustomObject(self, robot: cozmo.robot.Robot, timeout=None):
         filter = cozmo.event.Filter(cozmo.objects.EvtObjectObserved,
                                     obj=lambda obj: isinstance(obj, cozmo.objects.CustomObject))
@@ -225,25 +250,12 @@ class Patrol:
 ##                self.pathPoseTrack.update(FRAME_DURATION, FORWARD_SPEED)
                 # finish this path, because drive_straight is used and waited to finish
                 self.pathPoseTrack.update(999, self.forwardSpeed)
-                
-            # This block will not happen
-            # elif self.waitForOrder:
-            #     bldgId = self.pathPoseTrack.edge.start.id
-            #     nextId = self.pathPoseTrack.edge.end.id
-            #     destId = None
 
-            #     deliveryBag = []
-            #     if deliveryBag:
-            #         # TODO: assign destId
-            #         pass
-
-            #     if destId:
-            #         self.findPathAndDepart(bldgId, destId, nextId)
-
-            # end of the path
+            # did the last auto delivery
             if self.deliveryCount > self.maxDelivery:
                 await robot.play_anim_trigger(random.choice(ATTENTION_TRIGGERS)).wait_for_completed()
                 self.attentionCount = self.attentionCount + 1
+            # end of the path
             elif self.pathPoseTrack.consumeRouteEndSignal():
                 self.driveOnRoad = False
                 # stop before turn
@@ -263,17 +275,18 @@ class Patrol:
                 if self.stopped:
                     break
 
+                # continue auto delivery
                 if self.deliveryCount <= self.maxDelivery:
                     await self.depart(robot)
 
                 print("Move towards: %s" % self.pathPoseTrack.edge.end.id)
                 
-            # at any other cross or corner
+            # at any road intersection
             elif self.pathPoseTrack.consumeEdgeChangeSignal():
                 self.driveOnRoad = False
                 diff = self.pathPoseTrack.angleDiff
                 angleAbs = self.pathPoseTrack.angleAbs
-                # make sure the picked next
+                # a turn is about to be made
                 if diff < -0.1 or diff > 0.1:
                     # stop before turn
                     robot.stop_all_motors()
@@ -301,27 +314,17 @@ class Patrol:
 
         robot.stop_all_motors()
 
-    async def findPathAndDepart(self, startId, endId, nextId, robot: cozmo.robot.Robot):
-        path = self.track.getPath(startId, endId, nextId)
-        offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
-        self.pathPoseTrack.updatePath(path, self.forwardSpeed, offset)
-
-        # resume motion
-##        await robot.drive_wheels(FORWARD_SPEED, FORWARD_SPEED)
-        await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(self.forwardSpeed)).wait_for_completed()    
-        self.driveOnRoad = True
-        self.waitForOrder = False
-
     async def depart(self, robot: cozmo.robot.Robot):
         await robot.drive_straight(distance_mm(self.pathPoseTrack.distance), speed_mmps(self.forwardSpeed)).wait_for_completed()    
         self.driveOnRoad = True
         self.waitForOrder = False
 
-    def findPath(self, startId, endId, nextId):
+    def findAndUpdatePath(self, startId, endId, nextId):
         path = self.track.getPath(startId, endId, nextId)
         # offset = -(self.offsetPixel / DISTANCE_TO_PIXEL_SCALE)
         self.pathPoseTrack.updatePath(path, self.forwardSpeed)
 
+    # compute destination of next path based on state of bag and current building
     async def computeDestId(self, bldgId: str, robot: cozmo.robot.Robot):
         deliveryBag = []
         if self.remote:
@@ -341,10 +344,13 @@ class Patrol:
         colorName = next((n["color"] for n in deliveryBag if n is not None), None)
         print("Color: %s" % colorName)
         
+        # bag contains some pizza
         if colorName:
             destId = COLOR_TO_BLDG[colorName]
+        # bas is empty
         else:
             if robot.battery_voltage < 3.5:
+                # low voltage, back to home
                 destId = "GA"
             elif bldgId == "PH":
                 # Start waiting for pizza
@@ -353,21 +359,24 @@ class Patrol:
                 # Back to home, take rest
                 await self.backInGarage(robot, False)
             else:
+                # empty bag, return pizza shop to get more
                 destId = "PH"
 
+        # pizza buyers' buildings
         if bldgId != "GA" and bldgId != "PH":
             self.deliveryCount = self.deliveryCount + 1
 
         return destId
 
+    # Do the delivery or pick up
     async def deliverItem(self, robot: cozmo.robot.Robot, bldg: BldgVertex, destTurnRight=True):
         pose = robot.pose
+        # turn to the lane
         await robot.turn_in_place(degrees(-90 * self.flagToScale(destTurnRight))).wait_for_completed()
-##        await robot.drive_wheels(FORWARD_SPEED / 2, FORWARD_SPEED / 2)
-##        t = bldg.d / (FORWARD_SPEED / 2)
-##        await asyncio.sleep(t)
-##        robot.stop_all_motors()
+        # approach the marker
         await robot.drive_straight(distance_mm(bldg.d), speed_mmps(self.forwardSpeed / 2)).wait_for_completed()
+        
+        # protected action
         anim_done = False;
         while anim_done is False:
             try:
@@ -377,7 +386,9 @@ class Patrol:
                 await asyncio.sleep(0.1);
 
         self.waitForAnimation = True
+        # open offset window
         self.acceptOffset = True
+        # drop bag
         await robot.set_lift_height(0.0 + EPSILON).wait_for_completed()
         await asyncio.sleep(0.1)
         self.acceptOffset = False
@@ -387,12 +398,15 @@ class Patrol:
             waitingTime = 0.0
             while self.waitForAnimation:
                 await asyncio.sleep(0.1)
+                # autonomous turned off
                 if self.stopped:
                     return
+                # wait too long, have trouble, attract human attention for help
                 if waitingTime > MAX_WAITING_TIME:
                     self.deliveryCount = 999
                     return
                 waitingTime = waitingTime + 0.1
+        # remote controller not present, mock the behavior
         else:
             await asyncio.sleep(5)
         print("Finish waiting for animation")
@@ -409,14 +423,11 @@ class Patrol:
         nextId = self.pathPoseTrack.edge.end.id
         destId = await self.computeDestId(bldgId, robot)
         # find path, update to pathPoseTrack
-        self.findPath(bldgId, destId, nextId)
+        self.findAndUpdatePath(bldgId, destId, nextId)
         initTurnLeft = self.pathPoseTrack.path.firstTurnLeft
 
 
-        # or go to pose
-##        await robot.drive_wheels(-FORWARD_SPEED / 2, -FORWARD_SPEED / 2)
-##        await asyncio.sleep(t)
-##        robot.stop_all_motors()
+        # back to road
         await robot.drive_straight(distance_mm(-bldg.d), speed_mmps(self.forwardSpeed / 2)).wait_for_completed()
         
         # delivery count not at max, drive normally
@@ -431,16 +442,18 @@ class Patrol:
             await robot.turn_in_place(degrees(180)).wait_for_completed()
             await robot.say_text("I don't want to work").wait_for_completed()
         
-        
+    # turn and drive backwards to return to garage
     async def backInGarage(self, robot: cozmo.robot.Robot, ccrflag: bool):
         await robot.turn_in_place(degrees(90 * self.flagToScale(ccrflag))).wait_for_completed()
         await robot.drive_wheels(-self.forwardSpeed / 2, -self.forwardSpeed / 2)
         await asyncio.sleep(2)
         robot.stop_all_motors()
 
+    # change Cozmo's mood
     def change_mood(self, value):
         self.mood = value;
 
+    # disable autonomous mode. terminate autonomous execution if running
     def disableAuto(self):
         if not self.stopped:
             self.stopped = True
@@ -448,10 +461,12 @@ class Patrol:
             self.robot.abort_all_actions()
             self.robot.set_head_angle(cozmo.util.Angle(degrees=30));
 
+    # enable autonomous mode. Need to start by calling start() explicitly
     def enableAuto(self):
         if self.stopped:
             self.stopped = False
 
+    # binary scale
     def flagToScale(self, flag: bool):
         scale = 1
         if flag == False:
@@ -467,6 +482,7 @@ class Patrol:
         print("ANIMATION FINISHED");
         self.waitForAnimation = False
 
+    # define custom objects. Is called only when remote controller not present
     async def defineCustomObjects(self, world):
         cube_obj_1 = await world.define_custom_cube(CustomObjectTypes.CustomType02,
                                                   CustomObjectMarkers.Diamonds2,
