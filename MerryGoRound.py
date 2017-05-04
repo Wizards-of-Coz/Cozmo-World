@@ -23,6 +23,7 @@ class MerryGoRound():
             cozmo.connect(self.run)
 
     async def capture_values(self):
+        #calculate how dizze Cozmo is using accelerometer and gyroscope values
         self.acceleration = [0, 0, 0]
         while self.END is False:
             orientation = np.linalg.norm(np.floor_divide([self.robot.gyro.x, self.robot.gyro.y, self.robot.gyro.z], 1))
@@ -37,8 +38,10 @@ class MerryGoRound():
             await asyncio.sleep(0.1)
 
     async def spin(self):     
+        #Cozmo gets happy, does happy animations and asks you to go faster when he's on the carousel
         counter = 0
         while self.END is False:
+            #is_picked_up value goes true on sudden motions and so he knows he's being spun around
             if self.robot.is_picked_up is True:
                 x = random.randint(1, 4)
                 if x == 1:
@@ -64,6 +67,7 @@ class MerryGoRound():
             await asyncio.sleep(0.1)    
 
     def end_experience(self):
+        #calculate dizzy value on beinc called
         self.robot.abort_all_actions()
         self.END = True
         dizzy_meter = np.floor_divide(self.dizzy, 10)
@@ -77,6 +81,7 @@ class MerryGoRound():
         await self.start_experience()
 
     async def start_experience(self):
+        #setup and wait to be picked up
         await self.robot.set_lift_height(0).wait_for_completed()
         await self.robot.set_head_angle(cozmo.util.Angle(degrees=0)).wait_for_completed()
         await self.robot.play_anim_trigger(cozmo.anim.Triggers.FistBumpSuccess).wait_for_completed()
@@ -87,11 +92,13 @@ class MerryGoRound():
         screen_data_1 = cozmo.oled_face.convert_image_to_screen_data(resized_img)
         screen_data_2 = cozmo.oled_face.convert_image_to_screen_data(resized_img, invert_image=True)
 
+        #display seat_belt image while waiting to start
         while self.robot.is_picked_up is False:
             await self.robot.display_oled_face_image(screen_data_1, duration_ms=200).wait_for_completed()
             await self.robot.display_oled_face_image(screen_data_2, duration_ms=200).wait_for_completed()
             await asyncio.sleep(0)
 
+        #on being picked up
         self.robot.play_anim_trigger(cozmo.anim.Triggers.DroneModeTurboDrivingStart)
 
         while self.robot.is_picked_up is True:
