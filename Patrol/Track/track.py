@@ -1,3 +1,6 @@
+'''
+Track is stored as graph structure. 
+'''
 import json
 import random
 import os
@@ -16,6 +19,7 @@ class Edge:
         self.distance = tupleMagnitude(direction, direction)
         self.radians = tupleRadians(direction)
 
+    # get one edge randomly that starts from the end vertex of current edge
     def randomNextEdge(self):
         edge = self.end.randomEdge()
 
@@ -34,19 +38,23 @@ class Vertex:
         # blvd edge start at this vertex
         self.outEdges = []
 
+    # record the edge *(objects)* which starts with this vertex
     def addEdge(self, edge: Edge):
         self.outEdges.append(edge)
 
+    # get one random edge that starts from this vertex
     def randomEdge(self):
         if not self.outEdges:
             raise Exception("Initialization not finished")
         else:
             return random.choice(self.outEdges)
 
+    # find the exact one edge that starts from this vertex and ends at vertex with endId
     def findOutEdge(self, endId):
         edge = next((e for e in self.outEdges if e.end.id == endId))
         return edge
 
+    # find any one edge that starts from this vertex and NOT ends at vertex with endId
     def findOutEdgeNotEndsAt(self, endId):
         edge = next((e for e in self.outEdges if e.end.id != endId))
         return edge
@@ -71,6 +79,8 @@ class PoseTrack:
         self.distance = edge.distance
         self.routeEnd = False
         
+    # set current edge to the edge object provided in the parameters
+    # and modify other state variables consistently
     def switchEdge(self, edge: Edge, speed, offset = 0.0):
         # time passed moving on current edge
         self.movedTime = 0.0
@@ -88,6 +98,9 @@ class PoseTrack:
         self.edge = edge
         self.distance = edge.distance + offset
 
+    # update the poseTrack with given speed and small time
+    # set flags accordingly if current edge is passed 
+    # (current version only update once when the edge is passed) 
     def update(self, deltaTime, speed):
         self.movedTime += deltaTime
 
@@ -101,6 +114,7 @@ class PoseTrack:
             if edge == self.initialEdge:
                 self.routeEnd = True
 
+    # read and reset edge change flag
     def consumeEdgeChangeSignal(self):
         if self.edgeChanged:
             self.edgeChanged = False
@@ -108,6 +122,7 @@ class PoseTrack:
         else:
             return False
 
+    # read and reset route end flag
     def consumeRouteEndSignal(self):
         if self.routeEnd:
             self.routeEnd = False
@@ -115,13 +130,19 @@ class PoseTrack:
         else:
             return False
 
+# a path consists of a list of vertex objects,
+# and two flags indicating turning directions from/to small lanes to/from start and end vertex
 class Path:
+    # nodes: list of vertex *Id*
+    # vertices: list of vertex *object*
     def __init__(self, nodes: List[str], vertices: List[Vertex]):
         self.nodes = []
         self.firstTurnLeft = True
         self.lastTurnRight = True
         for i in range(len(nodes)):
             nodeId = nodes[i]
+            # if the nodeId is denoted as "-<vertex id>", 
+            # it means the direction on big roads is not turn left from direction along the small lane
             if '-' in nodeId:
                 nodeId = nodeId[1:]
                 if i == 1:
@@ -131,9 +152,8 @@ class Path:
                 else:
                     print("Invalid path in file")
             self.nodes.append(vertices[nodeId])
-        # for nodeId in nodes:
-        #     self.nodes.append(vertices[nodeId])
 
+# pose track data structure specified with paths
 class PathPoseTrack(PoseTrack):
     def __init__(self, path: Path, speed):
         self.setPath(path)
@@ -152,9 +172,11 @@ class PathPoseTrack(PoseTrack):
         # when Cozmo passed current edge
         if self.movedTime > self.maxTime:
             self.edgeChanged = True
+            # the current path node list is not exhausted
             if self.index < self.length - 2:
                 edge = self.edge.end.findOutEdge(self.path.nodes[self.index + 2].id)
                 self.switchEdge(edge, speed)
+            # the current path node list reaches end
             elif self.index == self.length - 2:
                 edge = self.edge.end.findOutEdgeNotEndsAt(self.edge.start.id)
                 self.switchEdge(edge, speed)
@@ -174,19 +196,21 @@ class PathPoseTrack(PoseTrack):
         e = v0.findOutEdge(v1.id)
         self.switchEdge(e, speed, offset)
 
+    # position correction detected with marker position offset
     def updateOffset(self, offset):
         self.distance = self.distance + offset
         
         
 
 class Track:
-
-
     def __init__(self, path = TRACK_FILE_PATH):
         path = os.path.join(os.path.dirname(__file__), path)
         
+        # vertexId -> vertex object
         self.vertices = {}
+        # list of edge objects
         self.edges = []
+        # (start vertexId, end vertexId) -> path object
         self.paths = {}
 
         d = None
