@@ -6,21 +6,6 @@ In the experience, Cozmo is a pizza delivery boy in a city made with cardboard p
 
 [https://www.youtube.com/watch?v=aUC0FIL7xog](https://www.youtube.com/watch?v=aUC0FIL7xog)
 
-<img src="/uploads/anki/original/2X/5/5bf8cdd31a28607959023bed333b951cf0db9866.jpg" width="690" height="387">
-**Ice-cream Parlor**
-
-<img src="/uploads/anki/original/2X/6/62d724b9321a83305d3a9edcb4eede31fc96b47f.jpg" width="690" height="460">
-**Carousel**
-
-<img src="/uploads/anki/original/2X/f/f82d58fe6b09427a4454bae28e5e091bede6b0d5.jpg" width="690" height="460">
-**Cozmo placing his pizza bag at the pizzeria to pick pizza up**
-
-<img src="/uploads/anki/original/2X/0/01aff638340454a49e5af549b7b92dc05a403b3f.jpg" width="690" height="387">
-**Pizzeria**
-
-<img src="/uploads/anki/original/2X/a/a8e35c3128b8c34859cf3cf231f8968c3f79b812.jpg" width="666" height="500">
-**The city**
-
 ## Implementation Details
 
 The Cozmo world experience incorporates a lot of the features that the SDK has to offer. The whole experience is built on Cozmo's Computer vision capabilities, we have used custom markers for the same. The vast number of animations that the SDK provides helped us a lot in building a character for Cozmo and highlighting a lot of his personality. We used ``drive_wheels`` instead of ``drive_straight`` as it provides us with more flexibility in terms of changing the speed of the wheels and performing multiple actions while driving. 
